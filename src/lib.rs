@@ -45,7 +45,7 @@ pub use paste;
 pub use hegel_derive::Generate;
 
 // Re-export embedded mode API
-pub use embedded::{hegel, hegel_with_options, HegelOptions};
+pub use embedded::{hegel, hegel_with_options, HegelOptions, Verbosity};
 
 /// The execution mode for the Hegel SDK.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

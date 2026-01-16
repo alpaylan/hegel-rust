@@ -35,13 +35,39 @@ use tempfile::TempDir;
 /// into the build directory's cache.
 const HEGEL_BINARY_PATH: &str = env!("HEGEL_BINARY_PATH");
 
+/// Verbosity levels for hegel output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Verbosity {
+    /// Minimal output (used by TUI).
+    Quiet,
+    /// Default - standard test output.
+    #[default]
+    Normal,
+    /// More detailed output.
+    Verbose,
+    /// Maximum verbosity + request/response logging.
+    Debug,
+}
+
+impl Verbosity {
+    /// Convert to command-line argument string.
+    fn as_str(&self) -> &'static str {
+        match self {
+            Verbosity::Quiet => "quiet",
+            Verbosity::Normal => "normal",
+            Verbosity::Verbose => "verbose",
+            Verbosity::Debug => "debug",
+        }
+    }
+}
+
 /// Options for embedded mode execution.
 #[derive(Debug, Clone, Default)]
 pub struct HegelOptions {
     /// Number of test cases to run. Default: 100.
     pub test_cases: Option<u64>,
-    /// Enable debug output from hegel.
-    pub debug: bool,
+    /// Verbosity level for hegel output. Default: Normal.
+    pub verbosity: Verbosity,
     /// Path to the hegel binary. Default: auto-detected at compile time.
     pub hegel_path: Option<String>,
 }
@@ -58,9 +84,9 @@ impl HegelOptions {
         self
     }
 
-    /// Enable debug output.
-    pub fn with_debug(mut self) -> Self {
-        self.debug = true;
+    /// Set the verbosity level.
+    pub fn with_verbosity(mut self, verbosity: Verbosity) -> Self {
+        self.verbosity = verbosity;
         self
     }
 
@@ -149,13 +175,12 @@ where
     let mut cmd = Command::new(hegel_path);
     cmd.arg("--client-mode")
         .arg(&socket_path)
-        .arg("--no-tui");
+        .arg("--no-tui")
+        .arg("--verbosity")
+        .arg(options.verbosity.as_str());
 
     if let Some(n) = options.test_cases {
         cmd.arg("--test-cases").arg(n.to_string());
-    }
-    if options.debug {
-        cmd.arg("--debug");
     }
 
     cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
@@ -170,7 +195,7 @@ where
         // Try to accept a connection
         match listener.accept() {
             Ok((stream, _)) => {
-                handle_connection(stream, test_fn.clone(), options.debug);
+                handle_connection(stream, test_fn.clone(), options.verbosity);
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 // No connection ready, check if hegel exited
@@ -204,7 +229,7 @@ fn handle_exit(status: ExitStatus) {
 }
 
 /// Handle a single connection from hegel (one test case).
-fn handle_connection<F: Fn()>(stream: UnixStream, test_fn: Arc<F>, debug: bool) {
+fn handle_connection<F: Fn()>(stream: UnixStream, test_fn: Arc<F>, verbosity: Verbosity) {
     // Stream accepted from non-blocking listener may inherit non-blocking mode on macOS.
     // Set it back to blocking for reliable reads.
     stream
@@ -230,7 +255,7 @@ fn handle_connection<F: Fn()>(stream: UnixStream, test_fn: Arc<F>, debug: bool) 
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    if debug {
+    if verbosity == Verbosity::Debug {
         eprintln!("Handshake received: is_last_run={}", is_last);
     }
 
@@ -275,7 +300,7 @@ fn handle_connection<F: Fn()>(stream: UnixStream, test_fn: Arc<F>, debug: bool) 
         }
     };
 
-    if debug {
+    if verbosity == Verbosity::Debug {
         eprintln!("Sending result: {}", result_msg);
     }
 
