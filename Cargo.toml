@@ -19,10 +19,6 @@ tempfile = "3"
 
 [dev-dependencies]
 
-[[bin]]
-name = "hegel_workout"
-path = "src/bin/hegel_workout.rs"
-
 [[test]]
 name = "property_tests"
 path = "tests/property_tests.rs"
