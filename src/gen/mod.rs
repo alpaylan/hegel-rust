@@ -1,9 +1,3 @@
-//! Generator types and combinators for property-based testing.
-//!
-//! This module provides a composable API for generating test data.
-//! Generators can be combined using methods like `map`, `flat_map`, and `filter`,
-//! and composed into complex data structures.
-
 mod collections;
 mod combinators;
 mod default;
@@ -15,24 +9,21 @@ mod primitives;
 mod strings;
 mod tuples;
 
-// Re-export everything for the public API
-pub use collections::{hashmaps, hashsets, vecs, HashMapGenerator, HashSetGenerator, VecGenerator};
-pub use combinators::{
-    one_of, optional, sampled_from, sampled_from_slice, BoxedGenerator, Filtered, FlatMapped,
-    Mapped, OneOfGenerator, OptionalGenerator, SampledFromGenerator, SampledFromSliceGenerator,
-};
-pub use default::DefaultGenerator;
-pub use fixed_dict::{fixed_dicts, FixedDictBuilder, FixedDictGenerator};
-pub use formats::{
-    dates, datetimes, domains, emails, ip_addresses, times, urls, DateGenerator, DateTimeGenerator,
-    DomainGenerator, EmailGenerator, IpAddressGenerator, IpVersion, TimeGenerator, UrlGenerator,
-};
-pub use numeric::{floats, integers, FloatGenerator, IntegerGenerator};
-pub use primitives::{
-    booleans, just, just_any, units, BoolGenerator, JustAnyGenerator, JustGenerator, UnitGenerator,
-};
-pub use strings::{from_regex, text, RegexGenerator, TextGenerator};
-pub use tuples::{tuples, tuples3, Tuple2Generator, Tuple3Generator};
+// public api
+pub use collections::{hashmaps, hashsets, vecs};
+pub use combinators::{one_of, optional, sampled_from, sampled_from_slice, BoxedGenerator};
+pub use fixed_dict::fixed_dicts;
+pub use formats::{dates, datetimes, domains, emails, ip_addresses, times, urls};
+pub use numeric::{floats, integers};
+pub use primitives::{booleans, just, just_any, units};
+pub use strings::{from_regex, text};
+pub use tuples::{tuples, tuples3};
+
+pub(crate) use collections::VecGenerator;
+pub(crate) use combinators::{Filtered, FlatMapped, Mapped, OptionalGenerator};
+pub(crate) use numeric::{FloatGenerator, IntegerGenerator};
+pub(crate) use primitives::BoolGenerator;
+pub(crate) use strings::TextGenerator;
 
 use crate::HegelMode;
 use serde_json::{json, Value};
