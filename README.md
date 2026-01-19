@@ -1,26 +1,6 @@
 # Hegel Rust SDK
 
-A Rust SDK for property-based testing with Hegel. Provides a Hypothesis-like API for generating test data via JSON Schema.
-
-## Prerequisites
-
-This SDK requires the `hegel` CLI tool to be installed. Install it via pip:
-
-```bash
-pip install git+ssh://git@github.com/antithesishq/hegel.git
-```
-
-Or if you have access to the repository locally:
-
-```bash
-pip install /path/to/hegel
-```
-
-Verify installation:
-
-```bash
-hegel --version
-```
+Hegel rust SDK.
 
 ## Installation
 
@@ -28,15 +8,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hegel = { git = "https://github.com/antithesishq/hegel-rust.git" }
-serde = { version = "1.0", features = ["derive"] }
-```
-
-Or for local development:
-
-```toml
-[dependencies]
-hegel = { path = "/path/to/hegel-rust" }
+hegel = { git = "ssh://git@github.com/antithesishq/hegel-rust" }
 serde = { version = "1.0", features = ["derive"] }
 ```
 
@@ -56,14 +28,6 @@ fn main() {
         .with_max_size(10);
     let values: Vec<i32> = vec_gen.generate();
 }
-```
-
-## Running with Hegel
-
-The SDK requires the Hegel backend. Tests are executed via the `hegel` command:
-
-```bash
-hegel ./target/debug/my_test --test-cases=100
 ```
 
 ## API Reference
@@ -90,7 +54,7 @@ pub trait Generate<T> {
 use hegel::gen::{self, Generate};
 
 // Unit
-let unit_gen = gen::units();
+let unit_gen = gen::unit();
 let _: () = unit_gen.generate();
 
 // Booleans
