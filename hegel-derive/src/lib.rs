@@ -526,11 +526,11 @@ fn derive_enum_generate(input: &DeriveInput, data: &syn::DataEnum) -> TokenStrea
 
     // Generate the schema() implementation
     let schema_impl = if data_variants.is_empty() {
-        // All unit variants - pure enum schema
+        // All unit variants - pure sampled_from schema
         quote! {
             fn schema(&self) -> Option<serde_json::Value> {
                 let variants: Vec<&str> = vec![#(#all_variant_names),*];
-                Some(serde_json::json!({ "enum": variants }))
+                Some(serde_json::json!({ "sampled_from": variants }))
             }
         }
     } else {
@@ -553,7 +553,7 @@ fn derive_enum_generate(input: &DeriveInput, data: &syn::DataEnum) -> TokenStrea
             fn generate(&self) -> #enum_name {
                 let variants: Vec<&str> = vec![#(#all_variant_names),*];
                 let selected: String = hegel::gen::generate_from_schema(
-                    &serde_json::json!({ "enum": variants })
+                    &serde_json::json!({ "sampled_from": variants })
                 );
 
                 match selected.as_str() {
@@ -575,7 +575,7 @@ fn derive_enum_generate(input: &DeriveInput, data: &syn::DataEnum) -> TokenStrea
                     hegel::gen::group(hegel::gen::labels::ENUM_VARIANT, || {
                         let variants: Vec<&str> = vec![#(#all_variant_names),*];
                         let selected: String = hegel::gen::generate_from_schema(
-                            &serde_json::json!({ "enum": variants })
+                            &serde_json::json!({ "sampled_from": variants })
                         );
 
                         match selected.as_str() {

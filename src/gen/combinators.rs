@@ -178,7 +178,7 @@ impl<T: Clone + Send + Sync + serde::Serialize> Generate<T> for SampledFromGener
     fn generate(&self) -> T {
         crate::assume(!self.elements.is_empty());
 
-        // Check if elements are primitive enough for enum schema
+        // Check if elements are primitive enough for sampled_from schema
         if let Some(schema) = self.schema() {
             let value: Value = generate_from_schema(&schema);
             // Find matching element
@@ -202,7 +202,7 @@ impl<T: Clone + Send + Sync + serde::Serialize> Generate<T> for SampledFromGener
     }
 
     fn schema(&self) -> Option<Value> {
-        // Only use enum schema for JSON-primitive types
+        // Only use sampled_from schema for JSON-primitive types
         let json_values: Vec<Value> = self.elements.iter().map(|e| json!(e)).collect();
 
         // Check if all values are primitives (not objects/arrays)
@@ -214,7 +214,7 @@ impl<T: Clone + Send + Sync + serde::Serialize> Generate<T> for SampledFromGener
         });
 
         if all_primitive {
-            Some(json!({"enum": json_values}))
+            Some(json!({"sampled_from": json_values}))
         } else {
             None
         }
@@ -253,7 +253,7 @@ impl<'a, T: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned
 
     fn schema(&self) -> Option<Value> {
         Some(json!({
-            "enum": self.elements
+            "sampled_from": self.elements
         }))
     }
 }
