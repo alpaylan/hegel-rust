@@ -201,7 +201,7 @@
 //! # Feature Flags
 //!
 //! - **`rand`**: Enables [`gen::randoms()`] for generating random number generators
-//!   that implement `rand::RngCore`. See the [`gen::randoms`] documentation.
+//!   that implement [`rand::RngCore`].
 //!
 //! # Debugging
 //!

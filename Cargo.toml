@@ -27,3 +27,7 @@ rand = "0.8"
 [features]
 default = []
 rand = ["dep:rand"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

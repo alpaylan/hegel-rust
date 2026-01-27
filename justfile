@@ -1,5 +1,5 @@
 docs:
-    cargo clean --doc && cargo doc --open --no-deps
+    cargo clean --doc && cargo doc --open --all-features --no-deps
 
 test:
     cargo test
