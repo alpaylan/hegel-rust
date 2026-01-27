@@ -14,6 +14,10 @@ use std::process::Command;
 // HEGEL_BINARY_PATH is exported for use by the code.
 
 fn main() {
+    // make our installed uv work under nix + madness:
+    // https://github.com/antithesishq/madness
+    std::env::set_var("MADNESS_ALLOW_LDD", "1");
+
     let hegel_path = ensure_hegel();
     eprintln!("using hegel: {}", hegel_path.display());
     // export HEGEL_BINARY_PATH for use by our code
