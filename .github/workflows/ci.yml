@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         # keep this in sync with the rust-version in cargo.toml
-        rust: ["1.68", stable]
+        rust: ["1.81", stable]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/base
@@ -46,7 +46,7 @@ jobs:
     strategy:
       matrix:
         # keep this in sync with the rust-version in cargo.toml
-        rust: ["1.68", stable]
+        rust: ["1.81", stable]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/base
