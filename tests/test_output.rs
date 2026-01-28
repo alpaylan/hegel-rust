@@ -24,10 +24,11 @@ fn test_failing_test_output() {
     //   thread 'main' (1) panicked at src/main.rs:7:9:
     //   intentional failure: 0
     //   Generated: 0
+    //   note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     let expected = Regex::new(concat!(
         r"^thread '.*' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
         r"intentional failure: -?\d+\n",
-        r"Generated: -?\d+$",
+        r"Generated: -?\d+",
     ))
     .unwrap();
 
