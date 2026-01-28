@@ -2,10 +2,8 @@ use crate::gen::{
     clear_connection, set_connection, set_is_last_run, take_generated_values,
 };
 use crate::protocol::{
-    cbor_to_json, json_to_cbor, Channel, Connection,
-    VERSION_NEGOTIATION_MESSAGE, VERSION_NEGOTIATION_OK,
+    Channel, Connection, VERSION_NEGOTIATION_MESSAGE, VERSION_NEGOTIATION_OK,
 };
-use ciborium::Value as CborValue;
 use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::os::unix::net::UnixStream;
@@ -251,11 +249,11 @@ where
         let got_interesting = Arc::new(AtomicBool::new(false));
 
         // Send run_test request
-        let run_test_msg = json_to_cbor(&json!({
+        let run_test_msg = json!({
             "command": "run_test",
             "name": "test",
             "test_cases": test_cases,
-        }));
+        });
 
         let pending_id = control.send_request(cbor_encode(&run_test_msg))
             .expect("Failed to send run_test");
@@ -294,27 +292,27 @@ where
 
                     // Send mark_complete (unless we hit overflow/StopTest)
                     if status != "OVERFLOW" {
-                        let mark_complete = json_to_cbor(&json!({
+                        let mark_complete = json!({
                             "command": "mark_complete",
                             "status": status,
                             "origin": origin,
-                        }));
-                        let _ = test_channel.request(&mark_complete);
+                        });
+                        let _ = test_channel.request_json(&mark_complete);
                     }
 
                     // Ack the test_case event
-                    control.send_response(event_id, cbor_encode(&json_to_cbor(&json!({"result": null}))))
+                    control.send_response(event_id, cbor_encode(&json!({"result": null})))
                         .expect("Failed to ack test_case");
                 }
                 Some("test_done") => {
                     // Ack the test_done event
-                    control.send_response(event_id, cbor_encode(&json_to_cbor(&json!({"result": null}))))
+                    control.send_response(event_id, cbor_encode(&json!({"result": null})))
                         .expect("Failed to ack test_done");
                     break;
                 }
                 _ => {
                     // Unknown event, just ack it
-                    control.send_response(event_id, cbor_encode(&json_to_cbor(&json!({"result": null}))))
+                    control.send_response(event_id, cbor_encode(&json!({"result": null})))
                         .expect("Failed to ack event");
                 }
             }
@@ -423,15 +421,14 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
     }
 }
 
-/// Encode a CBOR value to bytes.
-fn cbor_encode(value: &CborValue) -> Vec<u8> {
+/// Encode a JSON value to CBOR bytes using serde.
+fn cbor_encode(value: &Value) -> Vec<u8> {
     let mut bytes = Vec::new();
     ciborium::into_writer(value, &mut bytes).expect("CBOR encoding failed");
     bytes
 }
 
-/// Decode CBOR bytes to a JSON value.
+/// Decode CBOR bytes to a JSON value using serde.
 fn cbor_decode(bytes: &[u8]) -> Value {
-    let cbor: CborValue = ciborium::from_reader(bytes).expect("CBOR decoding failed");
-    cbor_to_json(&cbor)
+    ciborium::from_reader(bytes).expect("CBOR decoding failed")
 }

@@ -12,7 +12,6 @@ use std::os::unix::net::UnixStream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use ciborium::Value as CborValue;
 
 // Protocol constants
 const MAGIC: u32 = 0x4845474C; // "HEGL" in big-endian
@@ -242,8 +241,10 @@ impl Channel {
         Ok(())
     }
 
-    /// Send a CBOR request and wait for the CBOR response.
-    pub fn request(&self, message: &CborValue) -> std::io::Result<CborValue> {
+    /// Send a JSON request and wait for a JSON response.
+    /// Uses serde to serialize directly to CBOR - no manual conversion needed.
+    pub fn request_json(&self, message: &serde_json::Value) -> std::io::Result<serde_json::Value> {
+        // Serialize JSON value directly to CBOR bytes using serde
         let mut payload = Vec::new();
         ciborium::into_writer(message, &mut payload)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
@@ -251,33 +252,21 @@ impl Channel {
         let id = self.send_request(payload)?;
         let response_bytes = self.receive_response(id)?;
 
-        let response: CborValue = ciborium::from_reader(&response_bytes[..])
+        // Deserialize CBOR bytes directly to JSON value using serde
+        let response: serde_json::Value = ciborium::from_reader(&response_bytes[..])
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
         // Check for error response
-        if let CborValue::Map(ref map) = response {
-            for (k, v) in map {
-                if let CborValue::Text(key) = k {
-                    if key == "error" {
-                        let error_msg = match v {
-                            CborValue::Text(s) => s.clone(),
-                            _ => format!("{:?}", v),
-                        };
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!("Server error: {}", error_msg),
-                        ));
-                    }
-                }
-            }
-            // Extract result field
-            for (k, v) in map {
-                if let CborValue::Text(key) = k {
-                    if key == "result" {
-                        return Ok(v.clone());
-                    }
-                }
-            }
+        if let Some(error) = response.get("error") {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Server error: {}", error),
+            ));
+        }
+
+        // Extract result field if present
+        if let Some(result) = response.get("result") {
+            return Ok(result.clone());
         }
 
         Ok(response)
@@ -381,111 +370,6 @@ pub fn negotiate_version(connection: &Arc<Connection>) -> std::io::Result<()> {
     }
 }
 
-/// Helper to convert serde_json::Value to ciborium::Value.
-pub fn json_to_cbor(json: &serde_json::Value) -> CborValue {
-    match json {
-        serde_json::Value::Null => CborValue::Null,
-        serde_json::Value::Bool(b) => CborValue::Bool(*b),
-        serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                CborValue::Integer(i.into())
-            } else if let Some(u) = n.as_u64() {
-                CborValue::Integer(u.into())
-            } else if let Some(f) = n.as_f64() {
-                CborValue::Float(f)
-            } else {
-                CborValue::Null
-            }
-        }
-        serde_json::Value::String(s) => CborValue::Text(s.clone()),
-        serde_json::Value::Array(arr) => {
-            CborValue::Array(arr.iter().map(json_to_cbor).collect())
-        }
-        serde_json::Value::Object(obj) => {
-            CborValue::Map(
-                obj.iter()
-                    .map(|(k, v)| (CborValue::Text(k.clone()), json_to_cbor(v)))
-                    .collect(),
-            )
-        }
-    }
-}
-
-/// Helper to convert ciborium::Value to serde_json::Value.
-pub fn cbor_to_json(cbor: &CborValue) -> serde_json::Value {
-    match cbor {
-        CborValue::Null => serde_json::Value::Null,
-        CborValue::Bool(b) => serde_json::Value::Bool(*b),
-        CborValue::Integer(i) => {
-            let n: i128 = (*i).into();
-            if let Ok(i) = i64::try_from(n) {
-                serde_json::Value::Number(i.into())
-            } else if let Ok(u) = u64::try_from(n) {
-                serde_json::Value::Number(u.into())
-            } else {
-                // Fallback for very large integers
-                serde_json::Value::String(n.to_string())
-            }
-        }
-        CborValue::Float(f) => {
-            serde_json::Number::from_f64(*f)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null)
-        }
-        CborValue::Text(s) => serde_json::Value::String(s.clone()),
-        CborValue::Bytes(b) => {
-            // Encode bytes as base64
-            let mut encoded = Vec::new();
-            base64_encode(b, &mut encoded);
-            serde_json::Value::String(String::from_utf8_lossy(&encoded).into_owned())
-        }
-        CborValue::Array(arr) => {
-            serde_json::Value::Array(arr.iter().map(cbor_to_json).collect())
-        }
-        CborValue::Map(map) => {
-            let obj: serde_json::Map<String, serde_json::Value> = map
-                .iter()
-                .filter_map(|(k, v)| {
-                    if let CborValue::Text(key) = k {
-                        Some((key.clone(), cbor_to_json(v)))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            serde_json::Value::Object(obj)
-        }
-        CborValue::Tag(_, inner) => cbor_to_json(inner),
-        _ => serde_json::Value::Null,
-    }
-}
-
-/// Simple base64 encoding.
-fn base64_encode(data: &[u8], output: &mut Vec<u8>) {
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    for chunk in data.chunks(3) {
-        let b0 = chunk[0] as usize;
-        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
-        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
-
-        output.push(ALPHABET[b0 >> 2]);
-        output.push(ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)]);
-
-        if chunk.len() > 1 {
-            output.push(ALPHABET[((b1 & 0x0f) << 2) | (b2 >> 6)]);
-        } else {
-            output.push(b'=');
-        }
-
-        if chunk.len() > 2 {
-            output.push(ALPHABET[b2 & 0x3f]);
-        } else {
-            output.push(b'=');
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -520,15 +404,20 @@ mod tests {
     }
 
     #[test]
-    fn test_json_cbor_conversion() {
+    fn test_json_cbor_serde_roundtrip() {
+        // Test that serde can roundtrip JSON through CBOR
         let json = serde_json::json!({
             "type": "integer",
             "minimum": 0,
             "maximum": 100
         });
 
-        let cbor = json_to_cbor(&json);
-        let back = cbor_to_json(&cbor);
+        // Serialize JSON to CBOR bytes
+        let mut cbor_bytes = Vec::new();
+        ciborium::into_writer(&json, &mut cbor_bytes).unwrap();
+
+        // Deserialize CBOR bytes back to JSON
+        let back: serde_json::Value = ciborium::from_reader(&cbor_bytes[..]).unwrap();
 
         assert_eq!(json, back);
     }

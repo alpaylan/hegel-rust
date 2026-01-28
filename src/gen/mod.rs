@@ -45,7 +45,7 @@ use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use crate::protocol::{cbor_to_json, json_to_cbor, Channel, Connection};
+use crate::protocol::{Channel, Connection};
 
 // ============================================================================
 // State Management (Thread-Local)
@@ -171,7 +171,7 @@ impl std::error::Error for StopTestError {}
 pub(crate) fn send_request(command: &str, payload: &Value) -> Result<Value, StopTestError> {
     let debug = is_debug();
 
-    // Build the CBOR request message
+    // Build the request message
     let mut request_map = serde_json::Map::new();
     request_map.insert("command".to_string(), Value::String(command.to_string()));
 
@@ -183,7 +183,6 @@ pub(crate) fn send_request(command: &str, payload: &Value) -> Result<Value, Stop
     }
 
     let request = Value::Object(request_map);
-    let cbor_request = json_to_cbor(&request);
 
     if debug {
         eprintln!("REQUEST: {:?}", request);
@@ -195,11 +194,11 @@ pub(crate) fn send_request(command: &str, payload: &Value) -> Result<Value, Stop
             .as_ref()
             .expect("send_request called without active connection");
 
-        let result = state.channel.request(&cbor_request);
+        // Use request_json for direct serde serialization to CBOR
+        let result = state.channel.request_json(&request);
 
         match result {
-            Ok(cbor_response) => {
-                let response = cbor_to_json(&cbor_response);
+            Ok(response) => {
                 if debug {
                     eprintln!("RESPONSE: {:?}", response);
                 }
