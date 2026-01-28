@@ -34,30 +34,41 @@ fn base64_encode(input: &[u8]) -> String {
     result
 }
 
-fn base64_char_value(c: u8) -> Option<u8> {
+#[derive(Debug, PartialEq)]
+enum Base64Error {
+    InvalidLength(usize),
+    InvalidCharacter(char),
+}
+
+fn base64_char_value(c: u8) -> Result<u8, Base64Error> {
     match c {
-        b'A'..=b'Z' => Some(c - b'A'),
-        b'a'..=b'z' => Some(c - b'a' + 26),
-        b'0'..=b'9' => Some(c - b'0' + 52),
-        b'+' => Some(62),
-        b'/' => Some(63),
-        _ => None,
+        b'A'..=b'Z' => Ok(c - b'A'),
+        b'a'..=b'z' => Ok(c - b'a' + 26),
+        b'0'..=b'9' => Ok(c - b'0' + 52),
+        b'+' => Ok(62),
+        b'/' => Ok(63),
+        b'=' => Ok(0), // Padding, value doesn't matter
+        _ => Err(Base64Error::InvalidCharacter(c as char)),
     }
 }
 
-fn base64_decode(input: &str) -> Vec<u8> {
+fn base64_decode(input: &str) -> Result<Vec<u8>, Base64Error> {
+    if input.is_empty() {
+        return Ok(vec![]);
+    }
+
+    if input.len() % 4 != 0 {
+        return Err(Base64Error::InvalidLength(input.len()));
+    }
+
     let bytes = input.as_bytes();
     let mut result = Vec::with_capacity((bytes.len() * 3) / 4);
 
     for chunk in bytes.chunks(4) {
-        if chunk.len() < 4 {
-            break;
-        }
-
-        let a = base64_char_value(chunk[0]).unwrap_or(0);
-        let b = base64_char_value(chunk[1]).unwrap_or(0);
-        let c = base64_char_value(chunk[2]).unwrap_or(0);
-        let d = base64_char_value(chunk[3]).unwrap_or(0);
+        let a = base64_char_value(chunk[0])?;
+        let b = base64_char_value(chunk[1])?;
+        let c = base64_char_value(chunk[2])?;
+        let d = base64_char_value(chunk[3])?;
 
         // 4 base64 chars (4x6=24 bits) -> 3 bytes (3x8=24 bits)
         result.push((a << 2) | (b >> 4));
@@ -69,7 +80,7 @@ fn base64_decode(input: &str) -> Vec<u8> {
         }
     }
 
-    result
+    Ok(result)
 }
 
 /// Generator for binary data (byte sequences).
@@ -95,7 +106,7 @@ impl BinaryGenerator {
 impl Generate<Vec<u8>> for BinaryGenerator {
     fn generate(&self) -> Vec<u8> {
         let b64: String = generate_from_schema(&self.schema().unwrap());
-        base64_decode(&b64)
+        base64_decode(&b64).expect("invalid base64")
     }
 
     fn schema(&self) -> Option<Value> {
@@ -143,7 +154,7 @@ mod tests {
         Hegel::new(|| {
             let input = gen::binary().generate();
             let encoded = base64_encode(&input);
-            let decoded = base64_decode(&encoded);
+            let decoded = base64_decode(&encoded).unwrap();
             assert_eq!(input, decoded);
         })
         .test_cases(100)
@@ -160,5 +171,30 @@ mod tests {
         assert_eq!(base64_encode(b"foob"), "Zm9vYg==");
         assert_eq!(base64_encode(b"fooba"), "Zm9vYmE=");
         assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
+
+        // And decode them back
+        assert_eq!(base64_decode("").unwrap(), Vec::<u8>::new());
+        assert_eq!(base64_decode("Zg==").unwrap(), b"f".to_vec());
+        assert_eq!(base64_decode("Zm8=").unwrap(), b"fo".to_vec());
+        assert_eq!(base64_decode("Zm9v").unwrap(), b"foo".to_vec());
+    }
+
+    #[test]
+    fn test_base64_decode_errors() {
+        // Invalid length (not a multiple of 4)
+        assert_eq!(base64_decode("Z"), Err(Base64Error::InvalidLength(1)));
+        assert_eq!(base64_decode("Zm"), Err(Base64Error::InvalidLength(2)));
+        assert_eq!(base64_decode("Zm9"), Err(Base64Error::InvalidLength(3)));
+        assert_eq!(base64_decode("Zm9vY"), Err(Base64Error::InvalidLength(5)));
+
+        // Invalid characters
+        assert_eq!(
+            base64_decode("!!!!"),
+            Err(Base64Error::InvalidCharacter('!'))
+        );
+        assert_eq!(
+            base64_decode("Zm9@"),
+            Err(Base64Error::InvalidCharacter('@'))
+        );
     }
 }
