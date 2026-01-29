@@ -123,5 +123,5 @@ jobs:
       - name: Build and test
         working-directory: tests/nix
         run: |
-          nix build -L 2>&1 | tee build.log
+          nix build -L --override-input hegel-rust path:${{ github.workspace }} 2>&1 | tee build.log
           grep "test_nix_integration_marker" build.log
