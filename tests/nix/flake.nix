@@ -13,13 +13,12 @@
       hegel = hegel-rust.inputs.hegel;
 
       # Assemble source: tests/nix files + hegel-rust repo at "hegel-rust" subdir
-      src = pkgs.runCommand "nix-test-src" {} ''
+      src = pkgs.runCommand "nix-test-src" { } ''
         mkdir $out
         cp -r ${./.}/* $out/
         cp -r ${./../..} $out/hegel-rust
       '';
-    in
-    {
+    in {
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
         pname = "nix-test";
         version = "0.1.0";
@@ -30,11 +29,8 @@
       };
 
       devShells.${system}.default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.cargo
-          pkgs.rustc
-          hegel.packages.${system}.default
-        ];
+        buildInputs =
+          [ pkgs.cargo pkgs.rustc hegel.packages.${system}.default ];
       };
     };
 }
