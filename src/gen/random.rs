@@ -7,14 +7,14 @@
 //! ```no_run
 //! use hegel::gen::{randoms, Generate};
 //! use rand::Rng;
-//! use rand::seq::SliceRandom;
+//! use rand::prelude::{IndexedRandom, SliceRandom};
 //!
 //! # hegel::hegel(|| {
 //! let mut rng = randoms().generate();
 //!
 //! // Use any rand::Rng method
-//! let n: i32 = rng.gen_range(1..=100);
-//! let b: bool = rng.gen();
+//! let n: i32 = rng.random_range(1..=100);
+//! let b: bool = rng.random();
 //!
 //! // Use rand::seq::SliceRandom
 //! let items = vec![1, 2, 3, 4, 5];
@@ -89,8 +89,8 @@ impl Generate<HegelRandom> for RandomsGenerator {
 ///
 /// # hegel::hegel(|| {
 /// let mut rng = randoms().generate();
-/// let x: f64 = rng.gen();
-/// let n = rng.gen_range(1..=100);
+/// let x: f64 = rng.random();
+/// let n = rng.random_range(1..=100);
 /// # });
 /// ```
 pub fn randoms() -> RandomsGenerator {
@@ -103,7 +103,7 @@ pub fn randoms() -> RandomsGenerator {
 ///
 /// Implements [`rand::RngCore`], so it can be used anywhere the `rand` crate
 /// expects an RNG. The [`rand::Rng`] trait is automatically available via
-/// blanket impl, providing `gen()`, `gen_range()`, `gen_bool()`, etc.
+/// blanket impl, providing `random()`, `random_range()`, `random_bool()`, etc.
 ///
 /// [`rand::seq::SliceRandom`] also works, providing `choose()`, `shuffle()`,
 /// and `choose_multiple()` on slices.
@@ -112,6 +112,18 @@ pub enum HegelRandom {
     Artificial,
     /// Uses a seeded local RNG.
     True(Box<StdRng>),
+}
+
+// Dummy Deserialize impl to satisfy trait bounds when composing with vecs(), etc.
+// This is never called at runtime since randoms().schema() returns None,
+// causing collection generators to use compositional fallback.
+impl<'de> serde::Deserialize<'de> for HegelRandom {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        unreachable!("HegelRandom::deserialize should never be called")
+    }
 }
 
 impl RngCore for HegelRandom {
@@ -140,10 +152,5 @@ impl RngCore for HegelRandom {
             }
             Self::True(rng) => rng.fill_bytes(dest),
         }
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
-        self.fill_bytes(dest);
-        Ok(())
     }
 }

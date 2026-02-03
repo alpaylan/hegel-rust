@@ -1,23 +1,17 @@
 #![cfg(feature = "rand")]
 
 use hegel::gen::{integers, randoms, vecs, Generate};
-use rand::seq::SliceRandom;
+use rand::prelude::{IndexedRandom, SliceRandom};
 use rand::Rng;
 
-#[test]
-fn test_randoms_gen_range() {
-    hegel::hegel(|| {
-        let mut rng = randoms().generate();
-        let x: i32 = rng.gen_range(1..=100);
-        assert!((1..=100).contains(&x));
-    });
-}
 
 #[test]
-fn test_randoms_gen_bool() {
+fn test_randoms_generate() {
     hegel::hegel(|| {
-        let mut rng = randoms().generate();
-        let _b: bool = rng.gen();
+        let _: bool = randoms().generate().random();
+
+        let x: i32 = randoms().generate().random_range(1..=100);
+        assert!((1..=100).contains(&x));
     });
 }
 
@@ -26,12 +20,14 @@ fn test_randoms_shuffle_preserves_elements() {
     hegel::hegel(|| {
         let mut rng = randoms().generate();
 
-        let original = vec![1, 2, 3, 4, 5];
+        let original: Vec<i32> = vecs(integers()).generate();
         let mut shuffled = original.clone();
         shuffled.shuffle(&mut rng);
 
+        let mut sorted_original = original.clone();
+        sorted_original.sort();
         shuffled.sort();
-        assert_eq!(original, shuffled);
+        assert_eq!(sorted_original, shuffled);
     });
 }
 
@@ -46,7 +42,7 @@ fn test_randoms_choose() {
 }
 
 #[test]
-fn test_randoms_fill_bytes() {
+fn test_randoms_fill() {
     hegel::hegel(|| {
         let mut rng = randoms().generate();
         let mut bytes = [0u8; 16];
@@ -55,10 +51,40 @@ fn test_randoms_fill_bytes() {
 }
 
 #[test]
-fn test_randoms_true_random() {
+fn test_true_random() {
     hegel::hegel(|| {
         let mut rng = randoms().use_true_random().generate();
-        let x: i32 = rng.gen_range(1..=100);
+        let x: i32 = rng.random_range(1..=100);
         assert!((1..=100).contains(&x));
+    });
+}
+
+#[test]
+fn test_randoms_composes() {
+    hegel::hegel(|| {
+        let _ = vecs(randoms()).generate();
+    });
+}
+
+#[test]
+fn test_randoms_u64() {
+    hegel::hegel(|| {
+        let _: u64 = randoms().generate().random();
+    });
+}
+
+#[test]
+fn test_true_randoms_u64() {
+    hegel::hegel(|| {
+        let _: u64 = randoms().use_true_random().generate().random();
+    });
+}
+
+#[test]
+fn test_true_randoms_fill() {
+    hegel::hegel(|| {
+        let mut rng = randoms().use_true_random().generate();
+        let mut bytes = [0u8; 16];
+        rng.fill(&mut bytes);
     });
 }
