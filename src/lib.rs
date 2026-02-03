@@ -141,7 +141,7 @@
 //!
 //! // Filter values
 //! let even: i32 = gen::integers::<i32>()
-//!     .filter(|x| x % 2 == 0, 10)
+//!     .filter(|x| x % 2 == 0)
 //!     .generate();
 //!
 //! // Dependent generation

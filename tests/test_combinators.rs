@@ -89,3 +89,95 @@ fn test_one_of_many() {
         assert!((0..10).contains(&value));
     });
 }
+
+#[test]
+fn test_flat_map() {
+    hegel::hegel(|| {
+        let value: String = gen::integers::<usize>()
+            .with_min(1)
+            .with_max(5)
+            .flat_map(|len| gen::text().with_min_size(len).with_max_size(len))
+            .generate();
+        assert!(!value.is_empty());
+        assert!(value.chars().count() <= 5);
+    });
+}
+
+#[test]
+fn test_filter() {
+    hegel::hegel(|| {
+        let value: i32 = gen::integers::<i32>()
+            .with_min(0)
+            .with_max(100)
+            .filter(|n| n % 2 == 0)
+            .generate();
+        assert!(value % 2 == 0);
+        assert!(value >= 0 && value <= 100);
+    });
+}
+
+#[test]
+fn test_boxed_generator_clone() {
+    hegel::hegel(|| {
+        let gen1 = gen::integers::<i32>().with_min(0).with_max(10).boxed();
+        let gen2 = gen1.clone();
+        let v1 = gen1.generate();
+        let v2 = gen2.generate();
+        assert!(v1 >= 0 && v1 <= 10);
+        assert!(v2 >= 0 && v2 <= 10);
+    });
+}
+
+#[test]
+fn test_boxed_generator_double_boxed() {
+    hegel::hegel(|| {
+        // Calling .boxed() on an already-boxed generator should not re-wrap
+        let gen1 = gen::integers::<i32>().with_min(0).with_max(10).boxed();
+        let gen2 = gen1.boxed();
+        let value = gen2.generate();
+        assert!(value >= 0 && value <= 10);
+    });
+}
+
+#[test]
+fn test_sampled_from_non_primitive() {
+    #[derive(Clone, Debug, PartialEq, serde::Serialize)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+
+    hegel::hegel(|| {
+        let options = vec![
+            Point { x: 1, y: 2 },
+            Point { x: 3, y: 4 },
+            Point { x: 5, y: 6 },
+        ];
+        let value = gen::sampled_from(options.clone()).generate();
+        assert!(options.contains(&value));
+    });
+}
+
+#[test]
+fn test_optional_mapped() {
+    hegel::hegel(|| {
+        let value: Option<String> = gen::optional(
+            gen::integers::<i32>()
+                .with_min(0)
+                .with_max(100)
+                .map(|n| format!("value: {}", n)),
+        )
+        .generate();
+        if let Some(s) = value {
+            assert!(s.starts_with("value: "));
+        }
+    });
+
+    find_any(gen::optional(gen::integers::<i32>().map(|n| n * 2)), |v| {
+        v.is_some()
+    });
+
+    find_any(gen::optional(gen::integers::<i32>().map(|n| n * 2)), |v| {
+        v.is_none()
+    });
+}
