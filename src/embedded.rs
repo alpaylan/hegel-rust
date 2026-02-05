@@ -438,10 +438,7 @@ where
             .unwrap_or(0);
 
         if verbosity == Verbosity::Debug {
-            eprintln!(
-                "Test done. interesting_test_cases={}",
-                n_interesting
-            );
+            eprintln!("Test done. interesting_test_cases={}", n_interesting);
         }
 
         // Process final replay test cases (one per interesting example)
@@ -526,8 +523,8 @@ fn run_test_case<F: FnMut()>(
                 got_interesting.store(true, Ordering::SeqCst);
 
                 // Take panic info - we need location for origin, and print details on final
-                let (thread_name, thread_id, location, backtrace) =
-                    take_panic_info().unwrap_or_else(|| {
+                let (thread_name, thread_id, location, backtrace) = take_panic_info()
+                    .unwrap_or_else(|| {
                         (
                             "<unknown>".to_string(),
                             "?".to_string(),
@@ -578,8 +575,8 @@ fn run_test_case<F: FnMut()>(
                     "status": status,
                     "origin": origin,
                 });
-                // Fire-and-forget: server does not send a response to mark_complete
-                let _ = state.channel.send_request_json(&mark_complete);
+                // Wait for server to acknowledge mark_complete before closing
+                let _ = state.channel.request_json(&mark_complete);
                 // Close the test case channel
                 let _ = state.channel.close();
             }

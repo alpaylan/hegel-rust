@@ -46,7 +46,7 @@ fn test_optional_respects_inner_generator_bounds() {
         let value: Option<i32> =
             gen::optional(gen::integers().with_min(10).with_max(20)).generate();
         if let Some(n) = value {
-            assert!(n >= 10 && n <= 20);
+            assert!((10..=20).contains(&n));
         }
     });
 }
@@ -112,7 +112,7 @@ fn test_filter() {
             .filter(|n| n % 2 == 0)
             .generate();
         assert!(value % 2 == 0);
-        assert!(value >= 0 && value <= 100);
+        assert!((0..=100).contains(&value));
     });
 }
 
@@ -123,8 +123,8 @@ fn test_boxed_generator_clone() {
         let gen2 = gen1.clone();
         let v1 = gen1.generate();
         let v2 = gen2.generate();
-        assert!(v1 >= 0 && v1 <= 10);
-        assert!(v2 >= 0 && v2 <= 10);
+        assert!((0..=10).contains(&v1));
+        assert!((0..=10).contains(&v2));
     });
 }
 
@@ -135,7 +135,7 @@ fn test_boxed_generator_double_boxed() {
         let gen1 = gen::integers::<i32>().with_min(0).with_max(10).boxed();
         let gen2 = gen1.boxed();
         let value = gen2.generate();
-        assert!(value >= 0 && value <= 10);
+        assert!((0..=10).contains(&value));
     });
 }
 

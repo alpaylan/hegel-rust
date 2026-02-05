@@ -33,7 +33,9 @@ fn main() {
             gen = gen.with_max_size(max);
         }
         let value = gen.generate();
-        write(&Metrics { length: value.len() });
+        write(&Metrics {
+            length: value.len(),
+        });
     })
     .test_cases(get_test_cases())
     .run();

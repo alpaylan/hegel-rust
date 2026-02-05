@@ -52,7 +52,7 @@ fn test_f64_with_min_and_max() {
             .with_max(20.0)
             .allow_nan(false)
             .allow_infinity(false),
-        |&n| n >= 10.0 && n <= 20.0,
+        |&n| (10.0..=20.0).contains(&n),
     );
 }
 

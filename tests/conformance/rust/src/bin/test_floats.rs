@@ -49,10 +49,10 @@ fn main() {
             gen = gen.exclude_max();
         }
         if params.allow_nan {
-            gen = gen.allow_nan();
+            gen = gen.allow_nan(true);
         }
         if params.allow_infinity {
-            gen = gen.allow_infinity();
+            gen = gen.allow_infinity(true);
         }
 
         let value = gen.generate();

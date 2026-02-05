@@ -4,7 +4,6 @@ use hegel::gen::{integers, randoms, vecs, Generate};
 use rand::prelude::{IndexedRandom, SliceRandom};
 use rand::Rng;
 
-
 #[test]
 fn test_randoms_generate() {
     hegel::hegel(|| {

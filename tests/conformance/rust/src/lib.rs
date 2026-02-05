@@ -9,13 +9,9 @@ static METRICS_FILE: OnceLock<Option<std::fs::File>> = OnceLock::new();
 
 fn get_metrics_file() -> &'static Option<std::fs::File> {
     METRICS_FILE.get_or_init(|| {
-        std::env::var("CONFORMANCE_METRICS_FILE").ok().and_then(|path| {
-            OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(path)
-                .ok()
-        })
+        std::env::var("CONFORMANCE_METRICS_FILE")
+            .ok()
+            .and_then(|path| OpenOptions::new().append(true).create(true).open(path).ok())
     })
 }
 
@@ -32,7 +28,9 @@ pub fn write<T: Serialize>(metrics: &T) {
     // We need interior mutability for the file handle
     if let Some(ref file) = *get_metrics_file() {
         // Clone the file handle to get a mutable reference
-        let mut file = file.try_clone().expect("Failed to clone metrics file handle");
+        let mut file = file
+            .try_clone()
+            .expect("Failed to clone metrics file handle");
         let json = serde_json::to_string(metrics).expect("Failed to serialize metrics");
         writeln!(file, "{}", json).expect("Failed to write metrics");
     }

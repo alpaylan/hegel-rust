@@ -244,18 +244,13 @@ impl Channel {
         Ok(())
     }
 
-    /// Send a JSON request without waiting for a response (fire-and-forget).
-    /// Returns the message ID of the sent request.
-    pub fn send_request_json(&self, message: &serde_json::Value) -> std::io::Result<u32> {
-        let mut payload = Vec::new();
-        ciborium::into_writer(message, &mut payload)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        self.send_request(payload)
-    }
-
     /// Close this channel by sending a close packet to the remote side.
     pub fn close(&self) -> std::io::Result<()> {
-        let packet = Packet::request(self.channel_id, CLOSE_CHANNEL_MESSAGE_ID, CLOSE_CHANNEL_PAYLOAD.to_vec());
+        let packet = Packet::request(
+            self.channel_id,
+            CLOSE_CHANNEL_MESSAGE_ID,
+            CLOSE_CHANNEL_PAYLOAD.to_vec(),
+        );
         self.connection.send_packet(&packet)
     }
 
@@ -276,10 +271,11 @@ impl Channel {
 
         // Check for error response
         if let Some(error) = response.get("error") {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Server error: {}", error),
-            ));
+            let error_type = response.get("type").and_then(|t| t.as_str()).unwrap_or("");
+            return Err(std::io::Error::other(format!(
+                "Server error ({}): {}",
+                error_type, error
+            )));
         }
 
         // Extract result field if present

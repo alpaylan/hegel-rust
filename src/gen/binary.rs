@@ -7,7 +7,7 @@ const BASE64_ALPHABET: &[u8; 64] =
 
 #[cfg(test)]
 fn base64_encode(input: &[u8]) -> String {
-    let mut result = String::with_capacity((input.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(input.len().div_ceil(3) * 4);
 
     for chunk in input.chunks(3) {
         // 3 bytes (3x8=24 bits) -> 4 base64 chars (4x6=24 bits)
