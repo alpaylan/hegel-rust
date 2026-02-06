@@ -73,7 +73,7 @@ fn test_compose_assert_all_examples() {
             let y = gen::integers::<i32>().with_min(0).with_max(100).generate();
             (x, y)
         }),
-        |&(x, y)| x >= 0 && x <= 100 && y >= 0 && y <= 100,
+        |&(x, y)| (0..=100).contains(&x) && (0..=100).contains(&y),
     );
 }
 
@@ -81,10 +81,7 @@ fn test_compose_assert_all_examples() {
 fn test_compose_inside_one_of() {
     hegel::hegel(|| {
         let value: i32 = hegel::one_of!(
-            hegel::compose!({
-                let x = gen::integers::<i32>().with_min(0).with_max(10).generate();
-                x
-            }),
+            hegel::compose!({ gen::integers::<i32>().with_min(0).with_max(10).generate() }),
             gen::integers::<i32>().with_min(100).with_max(110),
         )
         .generate();

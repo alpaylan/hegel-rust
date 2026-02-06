@@ -3,7 +3,7 @@ use ciborium::Value;
 
 /// A generator created from imperative code that calls `.generate()` on other generators.
 ///
-/// Use the [`compose!`] macro to create instances of this type.
+/// Use the `compose!` macro to create instances of this type.
 ///
 /// `ComposedGenerator` wraps a closure that produces values by composing
 /// multiple generator calls together. It has no schema (returns `None`),
@@ -19,7 +19,7 @@ where
 {
     /// Create a new `ComposedGenerator` from a closure.
     ///
-    /// Prefer using the [`compose!`] macro instead, which automatically
+    /// Prefer using the `compose!` macro instead, which automatically
     /// wraps the body in a labeled span for better shrinking.
     pub fn new(f: F) -> Self {
         ComposedGenerator {
