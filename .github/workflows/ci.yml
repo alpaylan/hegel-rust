@@ -49,7 +49,7 @@ jobs:
         rust: ["1.81", stable]
     steps:
       - name: Checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
       - uses: ./.github/actions/base
         with:
@@ -65,7 +65,7 @@ jobs:
           pip install git+ssh://git@github.com/antithesishq/hegel.git
 
       - name: Run tests
-      - uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@v2
