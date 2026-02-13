@@ -296,7 +296,9 @@ where
             eprintln!("Starting hegeld: {:?}", cmd);
         }
 
-        let mut child = cmd.spawn().expect(format!("Failed to spawn hegel at path {}", hegel_path).as_str());
+        let mut child = cmd
+            .spawn()
+            .expect(format!("Failed to spawn hegel at path {}", hegel_path).as_str());
 
         init_panic_hook();
 
