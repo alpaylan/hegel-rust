@@ -32,7 +32,7 @@ hegel-rust/
 │   ├── runner.rs       # Spawns hegel CLI, manages socket server
 │   └── gen/            # Generator implementations
 │       ├── mod.rs      # Generate trait, socket communication, thread-local state
-│       ├── primitives.rs   # unit(), booleans(), just(), just_any()
+│       ├── primitives.rs   # unit(), booleans(), just()
 │       ├── numeric.rs      # integers(), floats() with bounds
 │       ├── strings.rs      # text(), from_regex()
 │       ├── formats.rs      # emails(), urls(), dates(), ip_addresses(), etc.
