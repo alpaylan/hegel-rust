@@ -203,7 +203,7 @@
 //!
 //! # Debugging
 //!
-//! Set `HEGEL_DEBUG=1` to enable debug logging of requests/responses.
+//! Set verbosity to [`Verbosity::Debug`] to enable debug logging of requests/responses.
 
 pub(crate) mod cbor_helpers;
 pub mod gen;
@@ -228,6 +228,6 @@ pub fn note(message: &str) {
 /// Assume a condition is true. If false, reject the current test input.
 pub fn assume(condition: bool) {
     if !condition {
-        panic!("HEGEL_REJECT");
+        panic!("{}", runner::ASSUME_FAIL_STRING);
     }
 }

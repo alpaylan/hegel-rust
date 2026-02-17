@@ -46,9 +46,20 @@ pub(crate) mod exit_codes {
 }
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::protocol::{Channel, Connection};
+use crate::runner::Verbosity;
+
+static PROTOCOL_DEBUG: LazyLock<bool> = LazyLock::new(|| {
+    matches!(
+        std::env::var("HEGEL_PROTOCOL_DEBUG")
+            .unwrap_or_default()
+            .to_lowercase()
+            .as_str(),
+        "1" | "true"
+    )
+});
 
 // ============================================================================
 // State Management (Thread-Local)
@@ -103,19 +114,16 @@ pub(crate) struct ConnectionState {
     pub(crate) connection: Arc<Connection>,
     pub(crate) channel: Channel,
     pub(crate) span_depth: usize,
+    pub(crate) verbosity: Verbosity,
 }
 
 thread_local! {
     pub(crate) static CONNECTION: RefCell<Option<ConnectionState>> = const { RefCell::new(None) };
 }
 
-fn is_debug() -> bool {
-    std::env::var("HEGEL_DEBUG").is_ok()
-}
-
 /// Set the connection for the current test case.
 /// The channel parameter is the test case channel assigned by the server.
-pub(crate) fn set_connection(connection: Arc<Connection>, channel: Channel) {
+pub(crate) fn set_connection(connection: Arc<Connection>, channel: Channel, verbosity: Verbosity) {
     CONNECTION.with(|conn| {
         let mut conn = conn.borrow_mut();
         assert!(
@@ -127,6 +135,7 @@ pub(crate) fn set_connection(connection: Arc<Connection>, channel: Channel) {
             connection,
             channel,
             span_depth: 0,
+            verbosity,
         });
     });
 }
@@ -174,7 +183,13 @@ impl std::error::Error for StopTestError {}
 /// Send a request and receive a response over the thread-local connection.
 /// Returns Err(StopTestError) if the server sends an overflow error.
 pub(crate) fn send_request(command: &str, payload: &Value) -> Result<Value, StopTestError> {
-    let debug = is_debug();
+    let debug = *PROTOCOL_DEBUG
+        || CONNECTION.with(|conn| {
+            conn.borrow()
+                .as_ref()
+                .map(|s| s.verbosity == Verbosity::Debug)
+                .unwrap_or(false)
+        });
 
     // Build the request message by merging command into the payload map
     let mut entries = vec![(
@@ -264,7 +279,7 @@ pub fn generate_raw(schema: &Value) -> Value {
         }
         Err(StopTestError) => {
             crate::assume(false);
-            unreachable!("assume(false) should not return")
+            unreachable!()
         }
     }
 }
@@ -358,7 +373,7 @@ impl Collection {
                 Ok(v) => v,
                 Err(StopTestError) => {
                     crate::assume(false);
-                    unreachable!("assume(false) should not return")
+                    unreachable!()
                 }
             };
             let name = match response {
@@ -390,7 +405,7 @@ impl Collection {
             Err(StopTestError) => {
                 self.finished = true;
                 crate::assume(false);
-                unreachable!("assume(false) should not return")
+                unreachable!()
             }
         };
         let result = match response {

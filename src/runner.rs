@@ -176,8 +176,7 @@ impl Verbosity {
     }
 }
 
-/// Special marker used to identify assume(false) panics.
-const REJECT_MARKER: &str = "HEGEL_REJECT";
+pub(crate) const ASSUME_FAIL_STRING: &str = "__HEGEL_ASSUME_FAIL";
 
 /// Run property-based tests using Hegel with default options.
 ///
@@ -221,9 +220,8 @@ where
 /// ```
 pub struct Hegel<F> {
     test_fn: F,
-    test_cases: Option<u64>,
+    test_cases: u64,
     verbosity: Verbosity,
-    hegel_path: Option<String>,
 }
 
 impl<F> Hegel<F>
@@ -234,27 +232,20 @@ where
     pub fn new(test_fn: F) -> Self {
         Self {
             test_fn,
-            test_cases: None,
+            test_cases: 100,
             verbosity: Verbosity::Normal,
-            hegel_path: None,
         }
     }
 
     /// Set the number of test cases to run. Default: 100.
     pub fn test_cases(mut self, n: u64) -> Self {
-        self.test_cases = Some(n);
+        self.test_cases = n;
         self
     }
 
     /// Set the verbosity level. Default: Normal.
     pub fn verbosity(mut self, verbosity: Verbosity) -> Self {
         self.verbosity = verbosity;
-        self
-    }
-
-    /// Set the path to the hegel binary. Default: auto-detected at compile time.
-    pub fn hegel_path(mut self, path: impl Into<String>) -> Self {
-        self.hegel_path = Some(path.into());
         self
     }
 
@@ -280,15 +271,10 @@ where
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let socket_path = temp_dir.path().join("hegel.sock");
 
-        // Build hegel command - hegeld will bind to the socket and listen
-        let hegel_path = self.hegel_path.as_deref().unwrap_or(HEGEL_BINARY_PATH);
-        let mut cmd = Command::new(hegel_path);
+        let mut cmd = Command::new(HEGEL_BINARY_PATH);
         cmd.arg(&socket_path)
             .arg("--verbosity")
             .arg(self.verbosity.as_str());
-
-        let test_cases = self.test_cases.unwrap_or(100);
-        cmd.arg("--test-cases").arg(test_cases.to_string());
 
         cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
 
@@ -300,7 +286,7 @@ where
         #[allow(clippy::expect_fun_call)]
         let mut child = cmd
             .spawn()
-            .expect(format!("Failed to spawn hegel at path {}", hegel_path).as_str());
+            .expect(format!("Failed to spawn hegel at path {}", HEGEL_BINARY_PATH).as_str());
 
         init_panic_hook();
 
@@ -371,7 +357,7 @@ where
         let run_test_msg = cbor_map! {
             "command" => "run_test",
             "name" => "test",
-            "test_cases" => test_cases,
+            "test_cases" => self.test_cases,
             "channel" => test_channel.channel_id
         };
 
@@ -508,14 +494,14 @@ fn run_test_case<F: FnMut()>(
     test_channel: Channel,
     test_fn: &mut F,
     is_final: bool,
-    _verbosity: Verbosity,
+    verbosity: Verbosity,
     got_interesting: &Arc<AtomicBool>,
 ) {
     // Set thread-local state for this test case
     // Note: we pass the channel directly (not cloned) so generators and mark_complete
     // share the same message ID sequence.
     set_is_last_run(is_final);
-    set_connection(Arc::clone(connection), test_channel);
+    set_connection(Arc::clone(connection), test_channel, verbosity);
 
     // Run test in catch_unwind
     let result = catch_unwind(AssertUnwindSafe(test_fn));
@@ -524,9 +510,8 @@ fn run_test_case<F: FnMut()>(
     let (status, origin) = match &result {
         Ok(()) => ("VALID".to_string(), None),
         Err(e) => {
-            // Check if this is an assume(false) panic
             let msg = panic_message(e);
-            if msg == REJECT_MARKER {
+            if msg == ASSUME_FAIL_STRING {
                 ("INVALID".to_string(), None)
             } else {
                 got_interesting.store(true, Ordering::SeqCst);

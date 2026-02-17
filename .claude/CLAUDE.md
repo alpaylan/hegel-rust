@@ -48,10 +48,6 @@ hegel-rust/
 
 - **`rand`**: Enables `gen::randoms()` for generating `rand::RngCore` implementations
 
-## Environment Variables
-
-- `HEGEL_DEBUG=1`: Log all socket requests/responses to stderr
-
 ## Architecture
 
 ### How It Works
