@@ -40,7 +40,10 @@ impl BinaryGenerator {
 fn parse_binary(raw: Value) -> Vec<u8> {
     match raw {
         Value::Bytes(bytes) => bytes,
-        _ => panic!("Expected CBOR byte string from binary schema, got {:?}", raw),
+        _ => panic!(
+            "Expected CBOR byte string from binary schema, got {:?}",
+            raw
+        ),
     }
 }
 
