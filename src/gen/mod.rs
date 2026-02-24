@@ -20,7 +20,7 @@ pub use binary::binary;
 pub use collections::{hashmaps, hashsets, vecs, HashMapGenerator};
 pub use combinators::{one_of, optional, sampled_from, BoxedGenerator};
 pub use compose::{fnv1a_hash, ComposedGenerator};
-pub use default::DefaultGenerator;
+pub use default::{from_type, DefaultGenerator};
 pub use fixed_dict::fixed_dicts;
 pub use formats::{dates, datetimes, domains, emails, ip_addresses, times, urls};
 pub use numeric::{floats, integers};

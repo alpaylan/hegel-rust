@@ -155,7 +155,8 @@
 //!
 //! # Deriving Generators
 //!
-//! Use `#[derive(Generate)]` to automatically create generators for structs and enums:
+//! Use `#[derive(Generate)]` to automatically create generators for structs and enums,
+//! then use [`gen::from_type`] to get a generator:
 //!
 //! ```no_run
 //! use hegel::Generate;
@@ -168,7 +169,11 @@
 //! }
 //!
 //! # hegel::hegel(|| {
-//! let person: Person = PersonGenerator::new()
+//! // Generate with defaults
+//! let person: Person = gen::from_type::<Person>().generate();
+//!
+//! // Customize field generators
+//! let person: Person = gen::from_type::<Person>()
 //!     .with_age(gen::integers().with_min(0).with_max(120))
 //!     .generate();
 //! # });
@@ -178,8 +183,11 @@
 //!
 //! ```ignore
 //! use hegel::derive_generator;
+//! use hegel::gen::{self, Generate};
 //!
 //! derive_generator!(Point { x: f64, y: f64 });
+//!
+//! let point: Point = gen::from_type::<Point>().generate();
 //! ```
 //!
 //! # Assumptions
@@ -215,6 +223,8 @@ pub use gen::Generate;
 // Re-export for macro use
 #[doc(hidden)]
 pub use paste;
+#[doc(hidden)]
+pub use ciborium;
 
 // re-export public api
 pub use hegel_derive::Generate;

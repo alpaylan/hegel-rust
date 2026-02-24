@@ -16,6 +16,37 @@ pub trait DefaultGenerator: Sized {
     fn default_generator() -> Self::Generator;
 }
 
+/// Create a generator for a type using its default generator.
+///
+/// This is the primary way to get a generator for types that implement
+/// [`DefaultGenerator`], including types with `#[derive(Generate)]`.
+///
+/// # Example
+///
+/// ```no_run
+/// use hegel::gen::{self, Generate};
+/// use hegel::Generate;
+///
+/// #[derive(Generate, Debug)]
+/// struct Person {
+///     name: String,
+///     age: u32,
+/// }
+///
+/// # hegel::hegel(|| {
+/// // Generate with defaults
+/// let person: Person = gen::from_type::<Person>().generate();
+///
+/// // Customize field generators
+/// let person: Person = gen::from_type::<Person>()
+///     .with_age(gen::integers().with_min(0).with_max(120))
+///     .generate();
+/// # });
+/// ```
+pub fn from_type<T: DefaultGenerator>() -> T::Generator {
+    T::default_generator()
+}
+
 impl DefaultGenerator for bool {
     type Generator = BoolGenerator;
     fn default_generator() -> Self::Generator {
