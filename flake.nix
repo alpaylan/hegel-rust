@@ -25,24 +25,6 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      packages = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          default = pkgs.rustPlatform.buildRustPackage {
-            pname = "hegel-rust";
-            version = "0.1.0";
-            src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
-            nativeBuildInputs = [
-              hegel.packages.${system}.default
-            ];
-          };
-        }
-      );
-
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
 
       devShells = forAllSystems (
@@ -56,6 +38,7 @@
             buildInputs = [
               pkgs.cargo
               pkgs.rustc
+              hegel.packages.${system}.default
             ];
           };
         }

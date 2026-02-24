@@ -222,6 +222,7 @@ pub struct Hegel<F> {
     test_fn: F,
     test_cases: u64,
     verbosity: Verbosity,
+    seed: Value
 }
 
 impl<F> Hegel<F>
@@ -234,6 +235,7 @@ where
             test_fn,
             test_cases: 100,
             verbosity: Verbosity::Normal,
+            seed: Value::Null
         }
     }
 
@@ -246,6 +248,11 @@ where
     /// Set the verbosity level. Default: Normal.
     pub fn verbosity(mut self, verbosity: Verbosity) -> Self {
         self.verbosity = verbosity;
+        self
+    }
+
+    pub fn seed(mut self, seed: i64) -> Self {
+        self.seed = Value::Integer(seed.into());
         self
     }
 
@@ -372,6 +379,7 @@ where
             "command" => "run_test",
             "name" => "test",
             "test_cases" => self.test_cases,
+            "seed" => self.seed,
             "channel_id" => test_channel.channel_id
         };
 
