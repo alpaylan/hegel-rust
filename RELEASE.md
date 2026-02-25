@@ -1,3 +1,3 @@
 RELEASE_TYPE: patch
 
-This patch adds support for setting `seed` to the protocol.
+This patch adds support for setting `seed` as an option to `hegel`.
