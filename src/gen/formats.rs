@@ -5,7 +5,7 @@ use ciborium::Value;
 pub struct EmailGenerator;
 
 impl Generate<String> for EmailGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&cbor_map! {"type" => "email"})
     }
 
@@ -23,7 +23,7 @@ pub fn emails() -> EmailGenerator {
 pub struct UrlGenerator;
 
 impl Generate<String> for UrlGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&cbor_map! {"type" => "url"})
     }
 
@@ -57,7 +57,7 @@ impl DomainGenerator {
 }
 
 impl Generate<String> for DomainGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&self.build_schema())
     }
 
@@ -108,7 +108,7 @@ impl IpAddressGenerator {
 }
 
 impl Generate<String> for IpAddressGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&self.build_schema())
     }
 
@@ -126,7 +126,7 @@ pub fn ip_addresses() -> IpAddressGenerator {
 pub struct DateGenerator;
 
 impl Generate<String> for DateGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&cbor_map! {"type" => "date"})
     }
 
@@ -144,7 +144,7 @@ pub fn dates() -> DateGenerator {
 pub struct TimeGenerator;
 
 impl Generate<String> for TimeGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&cbor_map! {"type" => "time"})
     }
 
@@ -162,7 +162,7 @@ pub fn times() -> TimeGenerator {
 pub struct DateTimeGenerator;
 
 impl Generate<String> for DateTimeGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&cbor_map! {"type" => "datetime"})
     }
 

@@ -30,7 +30,7 @@
 ///     .with_name(gen::from_regex("[A-Z][a-z]+"))
 ///     .with_age(gen::integers::<u32>().with_min(0).with_max(120));
 ///
-/// let person: Person = gen.generate();
+/// let person: Person = hegel::draw(&gen);
 /// ```
 #[macro_export]
 macro_rules! derive_generator {
@@ -78,10 +78,10 @@ macro_rules! derive_generator {
                 }
 
                 impl<'a> $crate::gen::Generate<$struct_name> for [<$struct_name Generator>]<'a> {
-                    fn generate(&self) -> $struct_name {
+                    fn do_generate(&self) -> $struct_name {
                         use $crate::gen::Generate;
                         $struct_name {
-                            $($field_name: self.$field_name.generate(),)*
+                            $($field_name: self.$field_name.do_generate(),)*
                         }
                     }
                 }

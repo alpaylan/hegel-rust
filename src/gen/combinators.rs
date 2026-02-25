@@ -17,11 +17,11 @@ where
     G: Generate<T>,
     F: Fn(T) -> U + Send + Sync,
 {
-    fn generate(&self) -> U {
+    fn do_generate(&self) -> U {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
-            group(labels::MAPPED, || (self.f)(self.source.generate()))
+            group(labels::MAPPED, || (self.f)(self.source.do_generate()))
         }
     }
 
@@ -44,11 +44,11 @@ where
     G2: Generate<U>,
     F: Fn(T) -> G2 + Send + Sync,
 {
-    fn generate(&self) -> U {
+    fn do_generate(&self) -> U {
         group(labels::FLAT_MAP, || {
-            let intermediate = self.source.generate();
+            let intermediate = self.source.do_generate();
             let next_gen = (self.f)(intermediate);
-            next_gen.generate()
+            next_gen.do_generate()
         })
     }
 }
@@ -64,10 +64,10 @@ where
     G: Generate<T>,
     F: Fn(&T) -> bool + Send + Sync,
 {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         for _ in 0..3 {
             if let Some(value) = discardable_group(labels::FILTER, || {
-                let value = self.source.generate();
+                let value = self.source.do_generate();
                 if (self.predicate)(&value) {
                     Some(value)
                 } else {
@@ -109,8 +109,8 @@ impl<'a, T> Clone for BoxedGenerator<'a, T> {
 }
 
 impl<'a, T> Generate<T> for BoxedGenerator<'a, T> {
-    fn generate(&self) -> T {
-        self.inner.generate()
+    fn do_generate(&self) -> T {
+        self.inner.do_generate()
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, T>> {
@@ -131,18 +131,18 @@ pub struct SampledFromGenerator<T> {
 }
 
 impl<T: Clone + Send + Sync> Generate<T> for SampledFromGenerator<T> {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         crate::assume(!self.elements.is_empty());
 
         if let Some(basic) = self.as_basic() {
-            return basic.generate();
+            return basic.do_generate();
         }
 
         // Generate index and pick
         let idx_gen = integers::<usize>()
             .with_min(0)
             .with_max(self.elements.len() - 1);
-        let idx = idx_gen.generate();
+        let idx = idx_gen.do_generate();
         self.elements[idx].clone()
     }
 
@@ -173,19 +173,19 @@ pub struct OneOfGenerator<'a, T> {
 }
 
 impl<'a, T> Generate<T> for OneOfGenerator<'a, T> {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         crate::assume(!self.generators.is_empty());
 
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Generate index and delegate
             group(labels::ONE_OF, || {
                 let idx = integers::<usize>()
                     .with_min(0)
                     .with_max(self.generators.len() - 1)
-                    .generate();
-                self.generators[idx].generate()
+                    .do_generate();
+                self.generators[idx].do_generate()
             })
         }
     }
@@ -246,13 +246,14 @@ pub fn one_of<'a, T>(generators: Vec<BoxedGenerator<'a, T>>) -> OneOfGenerator<'
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::gen;
 ///
-/// let gen = hegel::one_of!(
+/// # hegel::hegel(|| {
+/// let value: i32 = hegel::draw(&hegel::one_of!(
 ///     gen::integers::<i32>().with_min(0).with_max(10),
 ///     gen::integers::<i32>().with_min(100).with_max(110),
-/// );
-/// let value = gen.generate();
+/// ));
+/// # });
 /// ```
 #[macro_export]
 macro_rules! one_of {
@@ -272,15 +273,15 @@ impl<T, G> Generate<Option<T>> for OptionalGenerator<G, T>
 where
     G: Generate<T>,
 {
-    fn generate(&self) -> Option<T> {
+    fn do_generate(&self) -> Option<T> {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Compositional fallback
             group(labels::OPTIONAL, || {
                 let is_some: bool = generate_from_schema(&cbor_map! {"type" => "boolean"});
                 if is_some {
-                    Some(self.inner.generate())
+                    Some(self.inner.do_generate())
                 } else {
                     None
                 }

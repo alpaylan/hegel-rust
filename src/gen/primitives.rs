@@ -11,7 +11,7 @@ pub struct JustGenerator<T> {
 }
 
 impl<T: Clone + Send + Sync> Generate<T> for JustGenerator<T> {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         self.value.clone()
     }
 
@@ -31,7 +31,7 @@ pub fn just<T: Clone + Send + Sync>(value: T) -> JustGenerator<T> {
 pub struct BoolGenerator;
 
 impl Generate<bool> for BoolGenerator {
-    fn generate(&self) -> bool {
+    fn do_generate(&self) -> bool {
         generate_from_schema(&cbor_map! {"type" => "boolean"})
     }
 

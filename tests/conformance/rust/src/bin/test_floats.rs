@@ -1,4 +1,4 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -55,7 +55,7 @@ fn main() {
             gen = gen.allow_infinity(allow_infinity);
         }
 
-        let value = gen.generate();
+        let value = hegel::draw(&gen);
         write(&Metrics {
             value,
             is_nan: value.is_nan(),

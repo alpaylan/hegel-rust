@@ -5,12 +5,12 @@
 //! # Example
 //!
 //! ```no_run
-//! use hegel::gen::{randoms, Generate};
+//! use hegel::gen::randoms;
 //! use rand::Rng;
 //! use rand::prelude::{IndexedRandom, SliceRandom};
 //!
 //! # hegel::hegel(|| {
-//! let mut rng = randoms().generate();
+//! let mut rng = hegel::draw(&randoms());
 //!
 //! // Use any rand::Rng method
 //! let n: i32 = rng.random_range(1..=100);
@@ -52,9 +52,9 @@ impl RandomsGenerator {
 }
 
 impl Generate<HegelRandom> for RandomsGenerator {
-    fn generate(&self) -> HegelRandom {
+    fn do_generate(&self) -> HegelRandom {
         if self.use_true_random {
-            let seed: u64 = integers().generate();
+            let seed: u64 = integers().do_generate();
             HegelRandom::True(Box::new(StdRng::seed_from_u64(seed)))
         } else {
             HegelRandom::Artificial
@@ -79,11 +79,11 @@ impl Generate<HegelRandom> for RandomsGenerator {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{randoms, Generate};
+/// use hegel::gen::randoms;
 /// use rand::Rng;
 ///
 /// # hegel::hegel(|| {
-/// let mut rng = randoms().generate();
+/// let mut rng = hegel::draw(&randoms());
 /// let x: f64 = rng.random();
 /// let n = rng.random_range(1..=100);
 /// # });
@@ -102,6 +102,7 @@ pub fn randoms() -> RandomsGenerator {
 ///
 /// [`rand::seq::SliceRandom`] also works, providing `choose()`, `shuffle()`,
 /// and `choose_multiple()` on slices.
+#[derive(Debug)]
 pub enum HegelRandom {
     /// Each operation proxies through Hypothesis for shrinking.
     Artificial,
@@ -124,14 +125,14 @@ impl<'de> serde::Deserialize<'de> for HegelRandom {
 impl RngCore for HegelRandom {
     fn next_u32(&mut self) -> u32 {
         match self {
-            Self::Artificial => integers().generate(),
+            Self::Artificial => integers().do_generate(),
             Self::True(rng) => rng.next_u32(),
         }
     }
 
     fn next_u64(&mut self) -> u64 {
         match self {
-            Self::Artificial => integers().generate(),
+            Self::Artificial => integers().do_generate(),
             Self::True(rng) => rng.next_u64(),
         }
     }
@@ -142,7 +143,7 @@ impl RngCore for HegelRandom {
                 let bytes: Vec<u8> = binary()
                     .with_min_size(dest.len())
                     .with_max_size(dest.len())
-                    .generate();
+                    .do_generate();
                 dest.copy_from_slice(&bytes);
             }
             Self::True(rng) => rng.fill_bytes(dest),

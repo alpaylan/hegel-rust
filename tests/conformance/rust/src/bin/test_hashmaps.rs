@@ -1,4 +1,4 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,7 @@ fn main() {
 
         match params.key_type.as_str() {
             "integer" => {
-                let map: HashMap<i32, i32> = gen::hashmaps(
+                let hashmap_gen = gen::hashmaps(
                     gen::integers::<i32>()
                         .with_min(params.min_key)
                         .with_max(params.max_key),
@@ -55,8 +55,8 @@ fn main() {
                         .with_max(params.max_value),
                 )
                 .with_min_size(params.min_size)
-                .with_max_size(params.max_size)
-                .generate();
+                .with_max_size(params.max_size);
+                let map: HashMap<i32, i32> = hegel::draw(&hashmap_gen);
 
                 size = map.len();
                 if map.is_empty() {
@@ -72,15 +72,15 @@ fn main() {
                 }
             }
             "string" => {
-                let map: HashMap<String, i32> = gen::hashmaps(
+                let hashmap_gen = gen::hashmaps(
                     gen::text(),
                     gen::integers::<i32>()
                         .with_min(params.min_value)
                         .with_max(params.max_value),
                 )
                 .with_min_size(params.min_size)
-                .with_max_size(params.max_size)
-                .generate();
+                .with_max_size(params.max_size);
+                let map: HashMap<String, i32> = hegel::draw(&hashmap_gen);
 
                 size = map.len();
                 min_key = None;

@@ -69,6 +69,8 @@ thread_local! {
     static GENERATED_VALUES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     /// Whether the test was aborted due to StopTest (server closed channel)
     pub(crate) static TEST_ABORTED: Cell<bool> = const { Cell::new(false) };
+    /// Whether we are inside a compose!() block
+    static IN_COMPOSITE: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Check if this is the last run.
@@ -89,6 +91,33 @@ fn buffer_generated_value(value: &str) {
 /// Take all buffered generated values, clearing the buffer.
 pub(crate) fn take_generated_values() -> Vec<String> {
     GENERATED_VALUES.with(|v| std::mem::take(&mut *v.borrow_mut()))
+}
+
+pub(crate) fn in_composite() -> bool {
+    IN_COMPOSITE.with(|c| c.get())
+}
+
+pub fn set_in_composite(val: bool) {
+    IN_COMPOSITE.with(|c| c.set(val));
+}
+
+/// RAII guard that sets `IN_COMPOSITE` to true on creation and false on drop.
+/// This ensures the flag is always reset even if the compose body panics.
+#[doc(hidden)]
+pub struct CompositeGuard;
+
+impl CompositeGuard {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        set_in_composite(true);
+        CompositeGuard
+    }
+}
+
+impl Drop for CompositeGuard {
+    fn drop(&mut self) {
+        set_in_composite(false);
+    }
 }
 
 /// Print a note message.
@@ -264,15 +293,7 @@ pub fn deserialize_value<T: serde::de::DeserializeOwned>(raw: Value) -> T {
 /// and buffers the generated value for last-run display.
 pub fn generate_raw(schema: &Value) -> Value {
     match request_from_schema(schema) {
-        Ok(v) => {
-            if is_last_run() {
-                buffer_generated_value(&format!(
-                    "Generated: {}",
-                    crate::cbor_helpers::display_value(&v)
-                ));
-            }
-            v
-        }
+        Ok(v) => v,
         Err(StopTestError) => {
             crate::assume(false);
             unreachable!()
@@ -328,7 +349,7 @@ pub fn stop_span(discard: bool) {
 /// let mut coll = Collection::new("my_list", 0, None);
 /// let mut result = Vec::new();
 /// while coll.more() {
-///     result.push(gen::integers::<i32>().generate());
+///     result.push(gen::integers::<i32>().do_generate());
 /// }
 /// ```
 pub struct Collection {
@@ -534,7 +555,7 @@ pub mod basic {
         /// Generate a value by sending the schema to the server and parsing the response.
         ///
         /// This is a convenience for `self.parse_raw(generate_raw(self.schema()))`.
-        pub fn generate(&self) -> T {
+        pub fn do_generate(&self) -> T {
             self.parse_raw(super::generate_raw(self.schema()))
         }
 
@@ -562,8 +583,8 @@ pub mod basic {
 /// Generators produce values of type `T` and optionally provide a
 /// [`BasicGenerator`] for server-based generation via `as_basic()`.
 pub trait Generate<T>: Send + Sync {
-    /// Generate a value.
-    fn generate(&self) -> T;
+    /// Generate a value. This is an internal method — use [`draw()`] instead.
+    fn do_generate(&self) -> T;
 
     /// Return a BasicGenerator for schema-based generation, if possible.
     ///
@@ -644,11 +665,45 @@ pub trait Generate<T>: Send + Sync {
 
 // Implement Generate for references to generators
 impl<T, G: Generate<T>> Generate<T> for &G {
-    fn generate(&self) -> T {
-        (*self).generate()
+    fn do_generate(&self) -> T {
+        (*self).do_generate()
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, T>> {
         (*self).as_basic()
     }
+}
+
+/// Draw a value from a generator, logging it on the final replay.
+///
+/// This is the primary user-facing API for generating values, analogous
+/// to Hypothesis's `data.draw()`. It must not be called inside a
+/// `compose!` block — use the `draw` parameter provided by `compose!` instead.
+///
+/// # Example
+///
+/// ```no_run
+/// use hegel::gen;
+///
+/// # hegel::hegel(|| {
+/// let x: i32 = hegel::draw(&gen::integers::<i32>());
+/// let s: String = hegel::draw(&gen::text());
+/// # });
+/// ```
+pub fn draw<T: std::fmt::Debug>(gen: &impl Generate<T>) -> T {
+    assert!(
+        !in_composite(),
+        "cannot call draw() inside compose!(). Use the draw parameter instead."
+    );
+    let value = gen.do_generate();
+    if is_last_run() {
+        buffer_generated_value(&format!("Generated: {:?}", value));
+    }
+    value
+}
+
+/// Internal helper for the `compose!` macro's draw parameter.
+#[doc(hidden)]
+pub fn __compose_draw<T>(gen: &impl Generate<T>) -> T {
+    gen.do_generate()
 }

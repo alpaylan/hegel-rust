@@ -14,13 +14,13 @@ where
     G1: Generate<T1>,
     G2: Generate<T2>,
 {
-    fn generate(&self) -> (T1, T2) {
+    fn do_generate(&self) -> (T1, T2) {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             group(labels::TUPLE, || {
-                let v1 = self.gen1.generate();
-                let v2 = self.gen2.generate();
+                let v1 = self.gen1.do_generate();
+                let v2 = self.gen2.do_generate();
                 (v1, v2)
             })
         }
@@ -74,14 +74,14 @@ where
     G2: Generate<T2>,
     G3: Generate<T3>,
 {
-    fn generate(&self) -> (T1, T2, T3) {
+    fn do_generate(&self) -> (T1, T2, T3) {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             group(labels::TUPLE, || {
-                let v1 = self.gen1.generate();
-                let v2 = self.gen2.generate();
-                let v3 = self.gen3.generate();
+                let v1 = self.gen1.do_generate();
+                let v2 = self.gen2.do_generate();
+                let v3 = self.gen3.do_generate();
                 (v1, v2, v3)
             })
         }

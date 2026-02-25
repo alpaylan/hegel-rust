@@ -186,10 +186,10 @@ pub(crate) const ASSUME_FAIL_STRING: &str = "__HEGEL_ASSUME_FAIL";
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::gen;
 ///
 /// hegel::hegel(|| {
-///     let n = gen::integers::<i32>().generate();
+///     let n = hegel::draw(&gen::integers::<i32>());
 ///     assert!(n + 0 == n); // Identity property
 /// });
 /// ```
@@ -208,10 +208,10 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use hegel::{Hegel, Verbosity, gen::{self, Generate}};
+/// use hegel::{Hegel, Verbosity, gen};
 ///
 /// Hegel::new(|| {
-///     let n = gen::integers::<i32>().generate();
+///     let n = hegel::draw(&gen::integers::<i32>());
 ///     assert!(n + 0 == n);
 /// })
 /// .test_cases(500)

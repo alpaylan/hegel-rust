@@ -75,10 +75,10 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
             }
         });
 
-    // Generate the generate() fallback fields
+    // Generate the do_generate() fallback fields
     let generate_fields = field_names.iter().map(|name| {
         quote! {
-            #name: self.#name.generate()
+            #name: self.#name.do_generate()
         }
     });
 
@@ -161,7 +161,7 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
             }
 
             impl<'a> hegel::gen::Generate<#name> for #generator_name<'a> {
-                fn generate(&self) -> #name {
+                fn do_generate(&self) -> #name {
                     use hegel::gen::Generate;
                     if let Some(basic) = self.as_basic() {
                         basic.parse_raw(hegel::gen::generate_raw(basic.schema()))

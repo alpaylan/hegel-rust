@@ -47,9 +47,9 @@ impl<T, G> Generate<Vec<T>> for VecGenerator<G, T>
 where
     G: Generate<T>,
 {
-    fn generate(&self) -> Vec<T> {
+    fn do_generate(&self) -> Vec<T> {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Compositional fallback: use server-managed collection sizing
             group(labels::LIST, || {
@@ -57,7 +57,7 @@ where
                     Collection::new("composite_list", self.min_size, self.max_size);
                 let mut result = Vec::new();
                 while collection.more() {
-                    result.push(self.elements.generate());
+                    result.push(self.elements.do_generate());
                 }
                 result
             })
@@ -122,9 +122,9 @@ where
     G: Generate<T>,
     T: Eq + Hash,
 {
-    fn generate(&self) -> HashSet<T> {
+    fn do_generate(&self) -> HashSet<T> {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Compositional fallback
             group(labels::SET, || {
@@ -132,12 +132,12 @@ where
                 let target_len = integers::<usize>()
                     .with_min(self.min_size)
                     .with_max(max)
-                    .generate();
+                    .do_generate();
 
                 let mut set = HashSet::new();
                 let mut attempts = 0;
                 while set.len() < target_len && attempts < target_len * 10 {
-                    set.insert(group(labels::SET_ELEMENT, || self.elements.generate()));
+                    set.insert(group(labels::SET_ELEMENT, || self.elements.do_generate()));
                     attempts += 1;
                 }
                 set
@@ -201,9 +201,9 @@ where
     V: Generate<VT>,
     KT: Eq + std::hash::Hash,
 {
-    fn generate(&self) -> HashMap<KT, VT> {
+    fn do_generate(&self) -> HashMap<KT, VT> {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Compositional fallback
             group(labels::MAP, || {
@@ -211,15 +211,15 @@ where
                 let len = integers::<usize>()
                     .with_min(self.min_size)
                     .with_max(max)
-                    .generate();
+                    .do_generate();
 
                 let mut map = HashMap::new();
                 let max_attempts = len * 10;
                 let mut attempts = 0;
                 while map.len() < len && attempts < max_attempts {
                     group(labels::MAP_ENTRY, || {
-                        let key = self.keys.generate();
-                        map.entry(key).or_insert_with(|| self.values.generate());
+                        let key = self.keys.do_generate();
+                        map.entry(key).or_insert_with(|| self.values.do_generate());
                     });
                     attempts += 1;
                 }
@@ -282,10 +282,10 @@ where
 /// use std::collections::HashMap;
 ///
 /// // String keys
-/// let string_keyed: HashMap<String, i32> = hashmaps(text(), integers()).generate();
+/// let string_keyed: HashMap<String, i32> = hegel::draw(&hashmaps(text(), integers()));
 ///
 /// // Integer keys
-/// let int_keyed: HashMap<i32, String> = hashmaps(integers(), text()).generate();
+/// let int_keyed: HashMap<i32, String> = hegel::draw(&hashmaps(integers(), text()));
 /// ```
 pub fn hashmaps<KT, VT, K: Generate<KT>, V: Generate<VT>>(
     keys: K,

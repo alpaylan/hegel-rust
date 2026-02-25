@@ -44,7 +44,7 @@ impl<T> Generate<T> for IntegerGenerator<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + Bounded + NumInteger + Send + Sync + Copy,
 {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         generate_from_schema(&self.build_schema())
     }
 
@@ -184,7 +184,7 @@ impl<T> Generate<T> for FloatGenerator<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + NumFloat + Send + Sync,
 {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         generate_from_schema(&self.build_schema())
     }
 

@@ -1,4 +1,4 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -45,7 +45,7 @@ fn main() {
             vec_gen = vec_gen.with_max_size(max);
         }
 
-        let list: Vec<i32> = vec_gen.generate();
+        let list: Vec<i32> = hegel::draw(&vec_gen);
 
         let size = list.len();
         let (min_element, max_element) = if list.is_empty() {

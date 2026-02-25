@@ -37,7 +37,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 /// let gen = gen::from_type::<Person>()
 ///     .with_age(gen::integers::<u32>().with_min(0).with_max(120));
 ///
-/// let person: Person = gen.generate();
+/// let person: Person = hegel::draw(&gen);
 /// ```
 ///
 /// # Enum Example
@@ -60,7 +60,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///             .with_since(gen::text().with_max_size(20))
 ///     );
 ///
-/// let status: Status = gen.generate();
+/// let status: Status = hegel::draw(&gen);
 /// ```
 #[proc_macro_derive(Generate)]
 pub fn derive_generate(input: TokenStream) -> TokenStream {

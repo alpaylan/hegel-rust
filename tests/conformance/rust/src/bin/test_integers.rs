@@ -1,4 +1,4 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ fn main() {
         if let Some(max) = params.max_value {
             gen = gen.with_max(max);
         }
-        let value = gen.generate();
+        let value = hegel::draw(&gen);
         write(&Metrics { value });
     })
     .test_cases(get_test_cases())

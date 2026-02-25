@@ -48,7 +48,7 @@ fn parse_binary(raw: Value) -> Vec<u8> {
 }
 
 impl Generate<Vec<u8>> for BinaryGenerator {
-    fn generate(&self) -> Vec<u8> {
+    fn do_generate(&self) -> Vec<u8> {
         parse_binary(super::generate_raw(&self.build_schema()))
     }
 
@@ -79,12 +79,12 @@ pub fn binary() -> BinaryGenerator {
 
 #[cfg(test)]
 mod tests {
-    use crate::{gen, gen::Generate, Hegel};
+    use crate::{gen, Hegel};
 
     #[test]
     fn test_binary_generation() {
         Hegel::new(|| {
-            let data = gen::binary().with_max_size(50).generate();
+            let data = crate::draw(&gen::binary().with_max_size(50));
             assert!(data.len() <= 50);
         })
         .test_cases(100)

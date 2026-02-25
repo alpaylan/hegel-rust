@@ -33,7 +33,7 @@ impl TextGenerator {
 }
 
 impl Generate<String> for TextGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&self.build_schema())
     }
 
@@ -73,7 +73,7 @@ impl RegexGenerator {
 }
 
 impl Generate<String> for RegexGenerator {
-    fn generate(&self) -> String {
+    fn do_generate(&self) -> String {
         generate_from_schema(&self.build_schema())
     }
 

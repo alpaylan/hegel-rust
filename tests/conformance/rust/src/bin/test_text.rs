@@ -1,4 +1,4 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ fn main() {
         if let Some(max) = params.max_size {
             gen = gen.with_max_size(max);
         }
-        let value = gen.generate();
+        let value = hegel::draw(&gen);
         // Report length in Unicode codepoints, not bytes
         let length = value.chars().count();
         write(&Metrics { length });

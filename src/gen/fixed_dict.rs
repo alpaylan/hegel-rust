@@ -10,8 +10,8 @@ pub(crate) struct MappedToValue<T, G> {
 }
 
 impl<T: serde::Serialize, G: Generate<T>> Generate<Value> for MappedToValue<T, G> {
-    fn generate(&self) -> Value {
-        crate::cbor_helpers::cbor_serialize(&self.inner.generate())
+    fn do_generate(&self) -> Value {
+        crate::cbor_helpers::cbor_serialize(&self.inner.do_generate())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, Value>> {
@@ -56,16 +56,16 @@ pub struct FixedDictGenerator<'a> {
 }
 
 impl<'a> Generate<Value> for FixedDictGenerator<'a> {
-    fn generate(&self) -> Value {
+    fn do_generate(&self) -> Value {
         if let Some(basic) = self.as_basic() {
-            basic.generate()
+            basic.do_generate()
         } else {
             // Compositional fallback
             group(labels::FIXED_DICT, || {
                 let entries: Vec<(Value, Value)> = self
                     .fields
                     .iter()
-                    .map(|(name, gen)| (Value::Text(name.clone()), gen.generate()))
+                    .map(|(name, gen)| (Value::Text(name.clone()), gen.do_generate()))
                     .collect();
                 Value::Map(entries)
             })

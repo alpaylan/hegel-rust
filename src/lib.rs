@@ -3,13 +3,13 @@
 //! # Quick Start
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! #[test]
 //! fn test_addition_commutative() {
 //!     hegel::hegel(|| {
-//!         let x = gen::integers::<i32>().generate();
-//!         let y = gen::integers::<i32>().generate();
+//!         let x = hegel::draw(&gen::integers::<i32>());
+//!         let y = hegel::draw(&gen::integers::<i32>());
 //!         assert_eq!(x + y, y + x);
 //!     });
 //! }
@@ -21,12 +21,12 @@
 //!
 //! ```no_run
 //! use hegel::{Hegel, Verbosity};
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! #[test]
 //! fn test_with_options() {
 //!     Hegel::new(|| {
-//!         let n = gen::integers::<i32>().generate();
+//!         let n = hegel::draw(&gen::integers::<i32>());
 //!         assert!(n + 0 == n);
 //!     })
 //!     .test_cases(500)
@@ -43,86 +43,85 @@
 //! ## Primitives
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! # hegel::hegel(|| {
-//! let _: () = gen::unit().generate();
-//! let b: bool = gen::booleans().generate();
-//! let n: i32 = gen::just(42).generate();  // constant with schema
+//! let _: () = hegel::draw(&gen::unit());
+//! let b: bool = hegel::draw(&gen::booleans());
+//! let n: i32 = hegel::draw(&gen::just(42));  // constant with schema
 //! # });
 //! ```
 //!
 //! ## Numbers
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! # hegel::hegel(|| {
 //! // Integers - bounds default to type limits
-//! let i: i32 = gen::integers::<i32>().generate();
-//! let bounded: i32 = gen::integers().with_min(0).with_max(100).generate();
+//! let i: i32 = hegel::draw(&gen::integers::<i32>());
+//! let bounded: i32 = hegel::draw(&gen::integers().with_min(0).with_max(100));
 //!
 //! // Floating point
-//! let f: f64 = gen::floats::<f64>().generate();
-//! let bounded: f64 = gen::floats()
+//! let f: f64 = hegel::draw(&gen::floats::<f64>());
+//! let bounded: f64 = hegel::draw(&gen::floats()
 //!     .with_min(0.0)
 //!     .with_max(1.0)
 //!     .exclude_min()
-//!     .exclude_max()
-//!     .generate();
+//!     .exclude_max());
 //! # });
 //! ```
 //!
 //! ## Strings
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! # hegel::hegel(|| {
-//! let s: String = gen::text().generate();
-//! let bounded: String = gen::text().with_min_size(1).with_max_size(100).generate();
+//! let s: String = hegel::draw(&gen::text());
+//! let bounded: String = hegel::draw(&gen::text().with_min_size(1).with_max_size(100));
 //!
 //! // Regex patterns (auto-anchored)
-//! let pattern: String = gen::from_regex(r"[a-z]{3}-[0-9]{3}").generate();
+//! let pattern: String = hegel::draw(&gen::from_regex(r"[a-z]{3}-[0-9]{3}"));
 //!
 //! // Format strings
-//! let email: String = gen::emails().generate();
-//! let url: String = gen::urls().generate();
-//! let ip: String = gen::ip_addresses().v4().generate();
-//! let date: String = gen::dates().generate();  // YYYY-MM-DD
+//! let email: String = hegel::draw(&gen::emails());
+//! let url: String = hegel::draw(&gen::urls());
+//! let ip: String = hegel::draw(&gen::ip_addresses().v4());
+//! let date: String = hegel::draw(&gen::dates());  // YYYY-MM-DD
 //! # });
 //! ```
 //!
 //! ## Collections
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //! use std::collections::{HashSet, HashMap};
 //!
 //! # hegel::hegel(|| {
-//! let vec: Vec<i32> = gen::vecs(gen::integers()).with_min_size(1).generate();
-//! let set: HashSet<i32> = gen::hashsets(gen::integers()).generate();
-//! let map: HashMap<String, i32> = gen::hashmaps(gen::text(), gen::integers()).generate();
+//! let vec: Vec<i32> = hegel::draw(&gen::vecs(gen::integers()).with_min_size(1));
+//! let set: HashSet<i32> = hegel::draw(&gen::hashsets(gen::integers()));
+//! let map: HashMap<String, i32> = hegel::draw(&gen::hashmaps(gen::text(), gen::integers()));
 //! # });
 //! ```
 //!
 //! ## Combinators
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! # hegel::hegel(|| {
 //! // Sample from a fixed set
-//! let color: &str = gen::sampled_from(vec!["red", "green", "blue"]).generate();
+//! let color: &str = hegel::draw(&gen::sampled_from(vec!["red", "green", "blue"]));
 //!
 //! // Choose from multiple generators
-//! let n: i32 = hegel::one_of!(
+//! let n: i32 = hegel::draw(&hegel::one_of!(
 //!     gen::integers::<i32>().with_min(0).with_max(10),
 //!     gen::integers::<i32>().with_min(100).with_max(110),
-//! ).generate();
+//! ));
 //!
 //! // Optional values
-//! let opt: Option<i32> = gen::optional(gen::integers()).generate();
+//! let opt: Option<i32> = hegel::draw(&gen::optional(gen::integers()));
 //! # });
 //! ```
 //!
@@ -133,23 +132,20 @@
 //!
 //! # hegel::hegel(|| {
 //! // Transform values
-//! let squared: i32 = gen::integers::<i32>()
+//! let squared: i32 = hegel::draw(&gen::integers::<i32>()
 //!     .with_min(1)
 //!     .with_max(10)
-//!     .map(|x| x * x)
-//!     .generate();
+//!     .map(|x| x * x));
 //!
 //! // Filter values
-//! let even: i32 = gen::integers::<i32>()
-//!     .filter(|x| x % 2 == 0)
-//!     .generate();
+//! let even: i32 = hegel::draw(&gen::integers::<i32>()
+//!     .filter(|x| x % 2 == 0));
 //!
 //! // Dependent generation
-//! let sized: String = gen::integers::<usize>()
+//! let sized: String = hegel::draw(&gen::integers::<usize>()
 //!     .with_min(1)
 //!     .with_max(10)
-//!     .flat_map(|len| gen::text().with_min_size(len).with_max_size(len))
-//!     .generate();
+//!     .flat_map(|len| gen::text().with_min_size(len).with_max_size(len)));
 //! # });
 //! ```
 //!
@@ -160,7 +156,7 @@
 //!
 //! ```no_run
 //! use hegel::Generate;
-//! use hegel::gen::{self, Generate as _};
+//! use hegel::gen;
 //!
 //! #[derive(Generate, Debug)]
 //! struct Person {
@@ -170,12 +166,11 @@
 //!
 //! # hegel::hegel(|| {
 //! // Generate with defaults
-//! let person: Person = gen::from_type::<Person>().generate();
+//! let person: Person = hegel::draw(&gen::from_type::<Person>());
 //!
 //! // Customize field generators
-//! let person: Person = gen::from_type::<Person>()
-//!     .with_age(gen::integers().with_min(0).with_max(120))
-//!     .generate();
+//! let person: Person = hegel::draw(&gen::from_type::<Person>()
+//!     .with_age(gen::integers().with_min(0).with_max(120)));
 //! # });
 //! ```
 //!
@@ -183,11 +178,11 @@
 //!
 //! ```ignore
 //! use hegel::derive_generator;
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! derive_generator!(Point { x: f64, y: f64 });
 //!
-//! let point: Point = gen::from_type::<Point>().generate();
+//! let point: Point = hegel::draw(&gen::from_type::<Point>());
 //! ```
 //!
 //! # Assumptions
@@ -195,10 +190,10 @@
 //! Use [`assume`] to reject invalid test inputs:
 //!
 //! ```no_run
-//! use hegel::gen::{self, Generate};
+//! use hegel::gen;
 //!
 //! # hegel::hegel(|| {
-//! let age: u32 = gen::integers().generate();
+//! let age: u32 = hegel::draw(&gen::integers());
 //! hegel::assume(age >= 18);
 //! // Test logic for adults only...
 //! # });
@@ -218,6 +213,7 @@ pub mod gen;
 pub(crate) mod protocol;
 pub(crate) mod runner;
 
+pub use gen::draw;
 pub use gen::Generate;
 
 // Re-export for macro use

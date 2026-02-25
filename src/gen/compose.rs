@@ -1,7 +1,7 @@
 use super::Generate;
 use std::marker::PhantomData;
 
-/// A generator created from imperative code that calls `.generate()` on other generators.
+/// A generator created from imperative code that draws from other generators.
 ///
 /// Use the `compose!` macro to create instances of this type.
 ///
@@ -33,7 +33,7 @@ impl<T, F> Generate<T> for ComposedGenerator<T, F>
 where
     F: Fn() -> T + Send + Sync,
 {
-    fn generate(&self) -> T {
+    fn do_generate(&self) -> T {
         (self.f)()
     }
 }
@@ -52,21 +52,24 @@ pub const fn fnv1a_hash(bytes: &[u8]) -> u64 {
     hash
 }
 
-/// Create a generator from imperative code that calls `.generate()` on other generators.
+/// Create a generator from imperative code that draws from other generators.
 ///
-/// This is analogous to Hypothesis's `@composite` decorator. The body can call
-/// `.generate()` on any generators and combine the results in arbitrary ways.
+/// This is analogous to Hypothesis's `@composite` decorator. The closure
+/// receives a `draw` parameter that should be used to draw values from
+/// other generators.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::gen;
 ///
-/// let gen = hegel::compose!({
-///     let x = gen::integers::<i32>().with_min(0).with_max(10).generate();
-///     let y = gen::integers::<i32>().with_min(x).with_max(100).generate();
+/// # hegel::hegel(|| {
+/// let value = hegel::draw(&hegel::compose!(|draw| {
+///     let x = draw(&gen::integers::<i32>().with_min(0).with_max(10));
+///     let y = draw(&gen::integers::<i32>().with_min(x).with_max(100));
 ///     (x, y)
-/// });
+/// }));
+/// # });
 /// ```
 ///
 /// # Shrinking
@@ -76,10 +79,16 @@ pub const fn fnv1a_hash(bytes: &[u8]) -> u64 {
 /// and improve shrinking.
 #[macro_export]
 macro_rules! compose {
-    ({ $($body:tt)* }) => {{
+    (|$draw:ident| { $($body:tt)* }) => {{
         const LABEL: u64 = $crate::gen::fnv1a_hash(stringify!($($body)*).as_bytes());
         $crate::gen::ComposedGenerator::new(move || {
-            $crate::gen::group(LABEL, || { $($body)* })
+            let _guard = $crate::gen::CompositeGuard::new();
+            $crate::gen::group(LABEL, || {
+                fn $draw<T>(gen: &impl $crate::gen::Generate<T>) -> T {
+                    $crate::gen::__compose_draw(gen)
+                }
+                $($body)*
+            })
         })
     }};
 }

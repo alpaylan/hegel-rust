@@ -1,11 +1,11 @@
-use hegel::gen::{self, Generate};
+use hegel::gen;
 
 #[test]
 fn test_default_runs_100_test_cases() {
     let mut count = 0;
 
     hegel::hegel(|| {
-        let _ = gen::integers::<i32>().generate();
+        let _ = hegel::draw(&gen::integers::<i32>());
         count += 1;
     });
 
