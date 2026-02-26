@@ -64,8 +64,8 @@ pub(crate) fn default_gen_bounds(
         .iter()
         .map(|ty| {
             quote! {
-                #ty: hegel::gen::DefaultGenerator,
-                <#ty as hegel::gen::DefaultGenerator>::Generator: Send + Sync + #lifetime
+                #ty: hegel::generators::DefaultGenerator,
+                <#ty as hegel::generators::DefaultGenerator>::Generator: Send + Sync + #lifetime
             }
         })
         .collect()

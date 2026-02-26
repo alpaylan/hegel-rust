@@ -110,11 +110,11 @@ impl<'a> Generate<Value> for FixedDictGenerator<'a> {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::generators::{self, Generate};
 ///
-/// let gen = gen::fixed_dicts()
-///     .field("name", gen::text())
-///     .field("age", gen::integers::<u32>())
+/// let gen = generators::fixed_dicts()
+///     .field("name", generators::text())
+///     .field("age", generators::integers::<u32>())
 ///     .build();
 /// ```
 pub fn fixed_dicts<'a>() -> FixedDictBuilder<'a> {

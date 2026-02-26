@@ -11,8 +11,8 @@ use syn::{parse_macro_input, Data, DeriveInput};
 
 /// Derive a generator for a struct or enum.
 ///
-/// This implements [`DefaultGenerator`](hegel::gen::DefaultGenerator) for the type,
-/// allowing it to be used with [`from_type`](hegel::gen::from_type). The generated
+/// This implements [`DefaultGenerator`](hegel::generators::DefaultGenerator) for the type,
+/// allowing it to be used with [`from_type`](hegel::generators::from_type). The generated
 /// generator type is hidden from the namespace — use `from_type::<T>()` to access it.
 ///
 /// For structs, the generated generator has:
@@ -26,7 +26,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///
 /// ```ignore
 /// use hegel::Generate;
-/// use hegel::gen::{self, Generate as _};
+/// use hegel::generators::{self, Generate as _};
 ///
 /// #[derive(Generate)]
 /// struct Person {
@@ -34,8 +34,8 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///     age: u32,
 /// }
 ///
-/// let gen = gen::from_type::<Person>()
-///     .with_age(gen::integers::<u32>().with_min(0).with_max(120));
+/// let gen = generators::from_type::<Person>()
+///     .with_age(generators::integers::<u32>().with_min(0).with_max(120));
 ///
 /// let person: Person = hegel::draw(&gen);
 /// ```
@@ -44,7 +44,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///
 /// ```ignore
 /// use hegel::Generate;
-/// use hegel::gen::{self, Generate as _};
+/// use hegel::generators::{self, Generate as _};
 ///
 /// #[derive(Generate)]
 /// enum Status {
@@ -53,11 +53,11 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///     Error { code: i32, message: String },
 /// }
 ///
-/// let gen = gen::from_type::<Status>()
+/// let gen = generators::from_type::<Status>()
 ///     .with_Active(
-///         gen::from_type::<Status>()
+///         generators::from_type::<Status>()
 ///             .default_Active()
-///             .with_since(gen::text().with_max_size(20))
+///             .with_since(generators::text().with_max_size(20))
 ///     );
 ///
 /// let status: Status = hegel::draw(&gen);

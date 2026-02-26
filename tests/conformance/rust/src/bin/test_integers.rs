@@ -1,4 +1,4 @@
-use hegel::gen;
+use hegel::generators;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -28,7 +28,7 @@ fn main() {
     });
 
     Hegel::new(move || {
-        let mut gen = gen::integers::<i32>();
+        let mut gen = generators::integers::<i32>();
         if let Some(min) = params.min_value {
             gen = gen.with_min(min);
         }

@@ -24,7 +24,7 @@ pub trait DefaultGenerator: Sized {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen;
+/// use hegel::generators;
 /// use hegel::Generate;
 ///
 /// #[derive(Generate, Debug)]
@@ -35,11 +35,11 @@ pub trait DefaultGenerator: Sized {
 ///
 /// # hegel::hegel(|| {
 /// // Generate with defaults
-/// let person: Person = hegel::draw(&gen::from_type::<Person>());
+/// let person: Person = hegel::draw(&generators::from_type::<Person>());
 ///
 /// // Customize field generators
-/// let person: Person = hegel::draw(&gen::from_type::<Person>()
-///     .with_age(gen::integers().with_min(0).with_max(120)));
+/// let person: Person = hegel::draw(&generators::from_type::<Person>()
+///     .with_age(generators::integers().with_min(0).with_max(120)));
 /// # });
 /// ```
 pub fn from_type<T: DefaultGenerator>() -> T::Generator {

@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use hegel::gen::randoms;
+//! use hegel::generators::randoms;
 //! use rand::Rng;
 //! use rand::prelude::{IndexedRandom, SliceRandom};
 //!
@@ -79,7 +79,7 @@ impl Generate<HegelRandom> for RandomsGenerator {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::randoms;
+/// use hegel::generators::randoms;
 /// use rand::Rng;
 ///
 /// # hegel::hegel(|| {
