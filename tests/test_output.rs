@@ -4,11 +4,11 @@ use common::project::TempRustProject;
 use regex::Regex;
 
 const FAILING_TEST_CODE: &str = r#"
-use hegel::gen;
+use hegel::generators;
 
 fn main() {
     hegel::hegel(|| {
-        let x = hegel::draw(&gen::integers::<i32>());
+        let x = hegel::draw(&generators::integers::<i32>());
         panic!("intentional failure: {}", x);
     });
 }

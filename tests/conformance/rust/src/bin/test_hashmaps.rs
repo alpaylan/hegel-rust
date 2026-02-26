@@ -1,4 +1,4 @@
-use hegel::gen;
+use hegel::generators;
 use hegel::Hegel;
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -46,11 +46,11 @@ fn main() {
 
         match params.key_type.as_str() {
             "integer" => {
-                let hashmap_gen = gen::hashmaps(
-                    gen::integers::<i32>()
+                let hashmap_gen = generators::hashmaps(
+                    generators::integers::<i32>()
                         .with_min(params.min_key)
                         .with_max(params.max_key),
-                    gen::integers::<i32>()
+                    generators::integers::<i32>()
                         .with_min(params.min_value)
                         .with_max(params.max_value),
                 )
@@ -72,9 +72,9 @@ fn main() {
                 }
             }
             "string" => {
-                let hashmap_gen = gen::hashmaps(
-                    gen::text(),
-                    gen::integers::<i32>()
+                let hashmap_gen = generators::hashmaps(
+                    generators::text(),
+                    generators::integers::<i32>()
                         .with_min(params.min_value)
                         .with_max(params.max_value),
                 )

@@ -319,13 +319,13 @@ pub fn deserialize_value<T: serde::de::DeserializeOwned>(raw: Value) -> T {
 /// # Example
 ///
 /// ```ignore
-/// use hegel::gen::Collection;
+/// use hegel::generators::Collection;
 ///
-/// let data = hegel::gen::test_case_data();
+/// let data = hegel::generators::test_case_data();
 /// let mut coll = Collection::new("my_list", 0, None);
 /// let mut result = Vec::new();
 /// while coll.more(data) {
-///     result.push(gen::integers::<i32>().do_draw(data));
+///     result.push(generators::integers::<i32>().do_draw(data));
 /// }
 /// ```
 pub struct Collection {
@@ -627,11 +627,11 @@ impl<T, G: Generate<T>> Generate<T> for &G {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen;
+/// use hegel::generators;
 ///
 /// # hegel::hegel(|| {
-/// let x: i32 = hegel::draw(&gen::integers::<i32>());
-/// let s: String = hegel::draw(&gen::text());
+/// let x: i32 = hegel::draw(&generators::integers::<i32>());
+/// let s: String = hegel::draw(&generators::text());
 /// # });
 /// ```
 pub fn draw<T: std::fmt::Debug>(gen: &impl Generate<T>) -> T {

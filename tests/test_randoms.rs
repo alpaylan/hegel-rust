@@ -1,6 +1,6 @@
 #![cfg(feature = "rand")]
 
-use hegel::gen::{integers, randoms, vecs};
+use hegel::generators::{integers, randoms, vecs};
 use rand::prelude::{IndexedRandom, SliceRandom};
 use rand::Rng;
 

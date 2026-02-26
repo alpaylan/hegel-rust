@@ -62,13 +62,13 @@ impl Generate<Vec<u8>> for BinaryGenerator {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::generators::{self, Generate};
 ///
 /// // Generate any byte sequence
-/// let gen = gen::binary();
+/// let gen = generators::binary();
 ///
 /// // Generate 16-32 bytes
-/// let gen = gen::binary().with_min_size(16).with_max_size(32);
+/// let gen = generators::binary().with_min_size(16).with_max_size(32);
 /// ```
 pub fn binary() -> BinaryGenerator {
     BinaryGenerator {
@@ -79,12 +79,12 @@ pub fn binary() -> BinaryGenerator {
 
 #[cfg(test)]
 mod tests {
-    use crate::{gen, Hegel};
+    use crate::{generators, Hegel};
 
     #[test]
     fn test_binary_generation() {
         Hegel::new(|| {
-            let data = crate::draw(&gen::binary().with_max_size(50));
+            let data = crate::draw(&generators::binary().with_max_size(50));
             assert!(data.len() <= 50);
         })
         .test_cases(100)

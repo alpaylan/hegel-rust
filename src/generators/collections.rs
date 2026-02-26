@@ -280,7 +280,7 @@ where
 /// # Example
 ///
 /// ```ignore
-/// use hegel::gen::{hashmaps, integers, text};
+/// use hegel::generators::{hashmaps, integers, text};
 /// use std::collections::HashMap;
 ///
 /// // String keys

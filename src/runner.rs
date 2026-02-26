@@ -1,4 +1,4 @@
-use crate::gen::{TestCaseData, TEST_CASE_DATA};
+use crate::generators::{TestCaseData, TEST_CASE_DATA};
 use crate::protocol::{Channel, Connection, HANDSHAKE_STRING, SUPPORTED_PROTOCOL_VERSIONS};
 use ciborium::Value;
 
@@ -183,10 +183,10 @@ pub(crate) const ASSUME_FAIL_STRING: &str = "__HEGEL_ASSUME_FAIL";
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen;
+/// use hegel::generators;
 ///
 /// hegel::hegel(|| {
-///     let n = hegel::draw(&gen::integers::<i32>());
+///     let n = hegel::draw(&generators::integers::<i32>());
 ///     assert!(n + 0 == n); // Identity property
 /// });
 /// ```
@@ -208,7 +208,7 @@ where
 /// use hegel::{Hegel, Verbosity, gen};
 ///
 /// Hegel::new(|| {
-///     let n = hegel::draw(&gen::integers::<i32>());
+///     let n = hegel::draw(&generators::integers::<i32>());
 ///     assert!(n + 0 == n);
 /// })
 /// .test_cases(500)

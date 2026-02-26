@@ -64,13 +64,13 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen::{self, Generate};
+/// use hegel::generators::{self, Generate};
 ///
 /// // Generate any i32 (uses i32::MIN to i32::MAX)
-/// let gen = gen::integers::<i32>();
+/// let gen = generators::integers::<i32>();
 ///
 /// // Generate u8 in range 0-100
-/// let gen = gen::integers::<u8>().with_min(0).with_max(100);
+/// let gen = generators::integers::<u8>().with_min(0).with_max(100);
 /// ```
 pub fn integers<T>() -> IntegerGenerator<T>
 where

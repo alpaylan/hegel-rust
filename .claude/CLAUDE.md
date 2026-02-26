@@ -30,7 +30,7 @@ hegel-rust/
 │   ├── protocol.rs     # Binary protocol: packet encoding/decoding, channel multiplexing
 │   ├── cbor_helpers.rs # Macros and helpers for ciborium::Value (cbor_map!, cbor_array!, map_get, etc.)
 │   ├── runner.rs       # Spawns hegel CLI, manages socket server
-│   └── gen/            # Generator implementations
+│   └── generators/            # Generator implementations
 │       ├── mod.rs      # Generate trait, socket communication, thread-local state
 │       ├── primitives.rs   # unit(), booleans(), just()
 │       ├── numeric.rs      # integers(), floats() with bounds
@@ -53,7 +53,7 @@ hegel-rust/
 
 ## Feature Flags
 
-- **`rand`**: Enables `gen::randoms()` for generating `rand::RngCore` implementations
+- **`rand`**: Enables `generators::randoms()` for generating `rand::RngCore` implementations
 
 ## Architecture
 
@@ -86,7 +86,7 @@ When `schema()` returns `Some`, the SDK sends one request. When `None` (after `m
 
 ### Span System
 
-Spans (`start_span`/`stop_span`) group related generation calls, helping Hypothesis understand data structure for effective shrinking. Labels in `gen::labels` identify span types (LIST, TUPLE, ONE_OF, etc.).
+Spans (`start_span`/`stop_span`) group related generation calls, helping Hypothesis understand data structure for effective shrinking. Labels in `generators::labels` identify span types (LIST, TUPLE, ONE_OF, etc.).
 
 ## Key Patterns
 
@@ -94,7 +94,7 @@ Spans (`start_span`/`stop_span`) group related generation calls, helping Hypothe
 
 1. Create a builder struct with configuration fields
 2. Implement `Generate<T>` with `schema()` and `generate()`
-3. Export a factory function from `gen/mod.rs`
+3. Export a factory function from `generators/mod.rs`
 4. If the generated type should work with `#[derive(Generate)]`, implement `DefaultGenerator`
 
 ### Derive Macro

@@ -244,20 +244,20 @@ pub fn one_of<'a, T>(generators: Vec<BoxedGenerator<'a, T>>) -> OneOfGenerator<'
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen;
+/// use hegel::generators;
 ///
 /// # hegel::hegel(|| {
 /// let value: i32 = hegel::draw(&hegel::one_of!(
-///     gen::integers::<i32>().with_min(0).with_max(10),
-///     gen::integers::<i32>().with_min(100).with_max(110),
+///     generators::integers::<i32>().with_min(0).with_max(10),
+///     generators::integers::<i32>().with_min(100).with_max(110),
 /// ));
 /// # });
 /// ```
 #[macro_export]
 macro_rules! one_of {
     ($($gen:expr),+ $(,)?) => {
-        $crate::gen::one_of(vec![
-            $($crate::gen::Generate::boxed($gen)),+
+        $crate::generators::one_of(vec![
+            $($crate::generators::Generate::boxed($gen)),+
         ])
     };
 }

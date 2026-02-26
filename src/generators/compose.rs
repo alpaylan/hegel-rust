@@ -61,12 +61,12 @@ pub const fn fnv1a_hash(bytes: &[u8]) -> u64 {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::gen;
+/// use hegel::generators;
 ///
 /// # hegel::hegel(|| {
 /// let value = hegel::draw(&hegel::compose!(|draw| {
-///     let x = draw(&gen::integers::<i32>().with_min(0).with_max(10));
-///     let y = draw(&gen::integers::<i32>().with_min(x).with_max(100));
+///     let x = draw(&generators::integers::<i32>().with_min(0).with_max(10));
+///     let y = draw(&generators::integers::<i32>().with_min(x).with_max(100));
 ///     (x, y)
 /// }));
 /// # });
@@ -80,14 +80,14 @@ pub const fn fnv1a_hash(bytes: &[u8]) -> u64 {
 #[macro_export]
 macro_rules! compose {
     (|$draw:ident| { $($body:tt)* }) => {{
-        const LABEL: u64 = $crate::gen::fnv1a_hash(stringify!($($body)*).as_bytes());
-        $crate::gen::ComposedGenerator::new(move || {
-            let __data = $crate::gen::test_case_data();
+        const LABEL: u64 = $crate::generators::fnv1a_hash(stringify!($($body)*).as_bytes());
+        $crate::generators::ComposedGenerator::new(move || {
+            let __data = $crate::generators::test_case_data();
             let __was_composite = __data.in_composite();
             __data.set_in_composite(true);
             let __result = __data.span_group(LABEL, || {
-                fn $draw<T>(gen: &impl $crate::gen::Generate<T>) -> T {
-                    gen.do_draw($crate::gen::test_case_data())
+                fn $draw<T>(gen: &impl $crate::generators::Generate<T>) -> T {
+                    gen.do_draw($crate::generators::test_case_data())
                 }
                 $($body)*
             });

@@ -3,14 +3,14 @@
 //! These tests exercise the lifetime logic in BasicGenerator<'a, T> and
 //! the phantom type parameters on composite generators.
 
-use hegel::gen::{self, Generate};
+use hegel::generators::{self, Generate};
 
 #[test]
 fn test_sampled_from_references() {
     hegel::hegel(|| {
         let options = [10, 20, 30, 40, 50];
         let refs: Vec<&i32> = options.iter().collect();
-        let value: &i32 = hegel::draw(&gen::sampled_from(refs));
+        let value: &i32 = hegel::draw(&generators::sampled_from(refs));
         assert!(options.contains(value));
     });
 }
@@ -19,7 +19,7 @@ fn test_sampled_from_references() {
 fn test_sampled_from_str_references() {
     hegel::hegel(|| {
         let strings = ["hello", "world", "foo", "bar"];
-        let value: &str = hegel::draw(&gen::sampled_from(strings.to_vec()));
+        let value: &str = hegel::draw(&generators::sampled_from(strings.to_vec()));
         assert!(strings.contains(&value));
     });
 }
@@ -31,9 +31,9 @@ fn test_tuple_of_references() {
         let ys = ["a", "b", "c"];
         let x_refs: Vec<&i32> = xs.iter().collect();
         let y_refs: Vec<&&str> = ys.iter().collect();
-        let (x, y): (&i32, &&str) = hegel::draw(&gen::tuples(
-            gen::sampled_from(x_refs),
-            gen::sampled_from(y_refs),
+        let (x, y): (&i32, &&str) = hegel::draw(&generators::tuples(
+            generators::sampled_from(x_refs),
+            generators::sampled_from(y_refs),
         ));
         assert!(xs.contains(x));
         assert!(ys.contains(y));
@@ -45,7 +45,7 @@ fn test_optional_of_references() {
     hegel::hegel(|| {
         let values = [100, 200, 300];
         let refs: Vec<&i32> = values.iter().collect();
-        let result: Option<&i32> = hegel::draw(&gen::optional(gen::sampled_from(refs)));
+        let result: Option<&i32> = hegel::draw(&generators::optional(generators::sampled_from(refs)));
         if let Some(v) = result {
             assert!(values.contains(v));
         }
@@ -60,8 +60,8 @@ fn test_one_of_with_references() {
         let small_refs: Vec<&i32> = small.iter().collect();
         let big_refs: Vec<&i32> = big.iter().collect();
         let value: &i32 = hegel::draw(&hegel::one_of!(
-            gen::sampled_from(small_refs),
-            gen::sampled_from(big_refs),
+            generators::sampled_from(small_refs),
+            generators::sampled_from(big_refs),
         ));
         assert!(small.contains(value) || big.contains(value));
     });
@@ -73,7 +73,7 @@ fn test_vec_of_references() {
         let options = [10, 20, 30];
         let refs: Vec<&i32> = options.iter().collect();
         let result: Vec<&i32> = hegel::draw(
-            &gen::vecs(gen::sampled_from(refs))
+            &generators::vecs(generators::sampled_from(refs))
                 .with_min_size(1)
                 .with_max_size(5),
         );
@@ -89,7 +89,7 @@ fn test_map_over_references() {
     hegel::hegel(|| {
         let values = [10, 20, 30];
         let refs: Vec<&i32> = values.iter().collect();
-        let doubled: i32 = hegel::draw(&gen::sampled_from(refs).map(|r| r * 2));
+        let doubled: i32 = hegel::draw(&generators::sampled_from(refs).map(|r| r * 2));
         assert!([20, 40, 60].contains(&doubled));
     });
 }
@@ -103,10 +103,10 @@ fn test_tuple3_of_references() {
         let xr: Vec<&i32> = xs.iter().collect();
         let yr: Vec<&&str> = ys.iter().collect();
         let zr: Vec<&bool> = zs.iter().collect();
-        let (x, y, z): (&i32, &&str, &bool) = hegel::draw(&gen::tuples3(
-            gen::sampled_from(xr),
-            gen::sampled_from(yr),
-            gen::sampled_from(zr),
+        let (x, y, z): (&i32, &&str, &bool) = hegel::draw(&generators::tuples3(
+            generators::sampled_from(xr),
+            generators::sampled_from(yr),
+            generators::sampled_from(zr),
         ));
         assert!(xs.contains(x));
         assert!(ys.contains(y));
@@ -121,9 +121,9 @@ fn test_nested_optional_tuple_of_references() {
         let ages = [25u32, 30, 35];
         let name_refs: Vec<&&str> = names.iter().collect();
         let age_refs: Vec<&u32> = ages.iter().collect();
-        let result: Option<(&&str, &u32)> = hegel::draw(&gen::optional(gen::tuples(
-            gen::sampled_from(name_refs),
-            gen::sampled_from(age_refs),
+        let result: Option<(&&str, &u32)> = hegel::draw(&generators::optional(generators::tuples(
+            generators::sampled_from(name_refs),
+            generators::sampled_from(age_refs),
         )));
         if let Some((name, age)) = result {
             assert!(names.contains(name));
@@ -140,7 +140,7 @@ fn test_vec_of_tuples_of_references() {
         let kr: Vec<&i32> = keys.iter().collect();
         let vr: Vec<&&str> = vals.iter().collect();
         let result: Vec<(&i32, &&str)> = hegel::draw(
-            &gen::vecs(gen::tuples(gen::sampled_from(kr), gen::sampled_from(vr))).with_max_size(5),
+            &generators::vecs(generators::tuples(generators::sampled_from(kr), generators::sampled_from(vr))).with_max_size(5),
         );
         for (k, v) in &result {
             assert!(keys.contains(k));
@@ -157,8 +157,8 @@ fn test_one_of_mapped_references() {
         let pos_refs: Vec<&i32> = positives.iter().collect();
         let neg_refs: Vec<&i32> = negatives.iter().collect();
         let description: String = hegel::draw(&hegel::one_of!(
-            gen::sampled_from(pos_refs).map(|r| format!("positive: {}", r)),
-            gen::sampled_from(neg_refs).map(|r| format!("negative: {}", r)),
+            generators::sampled_from(pos_refs).map(|r| format!("positive: {}", r)),
+            generators::sampled_from(neg_refs).map(|r| format!("negative: {}", r)),
         ));
         assert!(description.starts_with("positive:") || description.starts_with("negative:"));
     });
@@ -169,7 +169,7 @@ fn test_boxed_generator_with_references() {
     hegel::hegel(|| {
         let options = [10, 20, 30];
         let refs: Vec<&i32> = options.iter().collect();
-        let gen = gen::sampled_from(refs).boxed();
+        let gen = generators::sampled_from(refs).boxed();
         let value: &i32 = hegel::draw(&gen);
         assert!(options.contains(value));
     });
@@ -185,8 +185,8 @@ fn test_deeply_nested_reference_composition() {
         let yr: Vec<&i32> = ys.iter().collect();
 
         let result: Vec<i32> = hegel::draw(
-            &gen::vecs(
-                gen::optional(gen::tuples(gen::sampled_from(xr), gen::sampled_from(yr))).map(
+            &generators::vecs(
+                generators::optional(generators::tuples(generators::sampled_from(xr), generators::sampled_from(yr))).map(
                     |opt| match opt {
                         Some((a, b)) => a + b,
                         None => 0,

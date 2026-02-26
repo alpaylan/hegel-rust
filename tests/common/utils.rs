@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use hegel::gen::Generate;
+use hegel::generators::Generate;
 use hegel::Hegel;
 use std::fmt::Debug;
 
