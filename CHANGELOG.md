@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4 - 2026-02-26
+
+Refactor internals for better encapsulation of per-test-case state.
+
+
 ## 0.1.3 - 2026-02-25
 
 Change how to draw a value from a generator from `generator.generate()` to `hegel::draw(generator)`.
