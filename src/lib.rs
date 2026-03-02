@@ -214,8 +214,7 @@ pub mod generators;
 pub(crate) mod protocol;
 pub(crate) mod runner;
 
-pub use control::{assume, currently_in_test_context, note};
-pub use generators::draw;
+pub use control::{assume, currently_in_test_context, draw, note};
 pub use generators::Generate;
 
 // Re-export for macro use

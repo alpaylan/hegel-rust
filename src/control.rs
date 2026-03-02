@@ -1,4 +1,4 @@
-use crate::generators::TestCaseData;
+use crate::generators::{Generate, TestCaseData};
 use std::cell::Cell;
 
 /// The sentinel string used to identify assume-rejection panics.
@@ -94,4 +94,31 @@ pub fn note(message: &str) {
     if data.is_last_run() {
         eprintln!("{}", message);
     }
+}
+
+/// Draw a value from a generator, logging it on the final replay.
+///
+/// This is the primary user-facing API for generating values, analogous
+/// to Hypothesis's `data.draw()`. It must not be called inside a
+/// `compose!` block — use the `draw` parameter provided by `compose!` instead.
+///
+/// # Example
+///
+/// ```no_run
+/// use hegel::generators;
+///
+/// # hegel::hegel(|| {
+/// let x: i32 = hegel::draw(&generators::integers::<i32>());
+/// let s: String = hegel::draw(&generators::text());
+/// # });
+/// ```
+pub fn draw<T: std::fmt::Debug>(gen: &impl Generate<T>) -> T {
+    let data = test_case_data().expect("draw() cannot be called outside of a Hegel test.");
+    assert!(
+        !data.in_composite(),
+        "cannot call draw() inside compose!(). Use the draw parameter instead."
+    );
+    let value = gen.do_draw(data);
+    data.record_draw(&value);
+    value
 }

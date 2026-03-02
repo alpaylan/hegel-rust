@@ -1,3 +1,6 @@
+# don't print bash comments as output during `just` invocation
+set ignore-comments := true
+
 # Install dependencies and the hegel binary.
 # If HEGEL_BINARY is set, symlinks it into ~/.local/bin instead of installing from git.
 setup:
@@ -24,7 +27,7 @@ test-all-features:
 format:
     cargo fmt
     # also run format-nix if we have nix installed
-    which nix && just format-nix || true
+    @which nix && just format-nix || true
 
 check-format:
     cargo fmt --check

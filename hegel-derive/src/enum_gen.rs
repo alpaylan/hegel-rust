@@ -3,20 +3,13 @@ use quote::{format_ident, quote};
 use syn::{DeriveInput, Fields, Variant};
 
 use crate::utils::{
-    cbor_array, cbor_map, cbor_map_to_hashmap, cbor_text, default_gen_bounds, object_schema,
+    cbor_array, cbor_map, cbor_text, cbor_to_iter, default_gen_bounds, tuple_schema,
 };
 
 // --- Enum-specific helpers ---
 
 fn cbor_int(val: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
     quote! { hegel::ciborium::Value::Integer(hegel::ciborium::value::Integer::from(#val)) }
-}
-
-fn tuple_schema(elements: Vec<proc_macro2::TokenStream>) -> proc_macro2::TokenStream {
-    cbor_map(vec![
-        (cbor_text("type"), cbor_text("tuple")),
-        (cbor_text("elements"), cbor_array(elements)),
-    ])
 }
 
 // --- Variant classification ---
@@ -539,10 +532,6 @@ fn generate_variant_generator(
                 })
                 .collect();
 
-            // Generate field name strings
-            let field_name_strings: Vec<String> =
-                field_names.iter().map(|n| n.to_string()).collect();
-
             // Basic bindings
             let basic_bindings: Vec<proc_macro2::TokenStream> = field_names
                 .iter()
@@ -552,49 +541,27 @@ fn generate_variant_generator(
                 })
                 .collect();
 
-            // Schema properties
-            let schema_properties: Vec<_> = field_names
+            // Schema elements (positional, in field order)
+            let schema_elements: Vec<_> = field_names
                 .iter()
-                .zip(field_name_strings.iter())
-                .map(|(name, name_str)| {
+                .map(|name| {
                     let basic_name = format_ident!("basic_{}", name);
-                    (cbor_text(name_str), quote! { #basic_name.schema().clone() })
+                    quote! { #basic_name.schema().clone() }
                 })
                 .collect();
 
-            let schema_required: Vec<_> =
-                field_name_strings.iter().map(|s| cbor_text(s)).collect();
+            let schema_ts = tuple_schema(schema_elements);
+            let parse_iter_ts = cbor_to_iter("iter", quote! { raw }, "Expected tuple for variant fields");
 
-            let inner_schema_ts = object_schema(schema_properties, schema_required);
-            let vname_text =
-                quote! { hegel::ciborium::Value::Text(variant_name_str.to_string()) };
-            let outer_schema_ts = object_schema(
-                vec![(vname_text.clone(), quote! { inner_schema })],
-                vec![vname_text],
-            );
-            let parse_outer_ts = cbor_map_to_hashmap(
-                "outer_map",
-                quote! { raw },
-                "Expected object for enum variant",
-            );
-            let parse_inner_ts = cbor_map_to_hashmap(
-                "inner_map",
-                quote! { inner_raw },
-                "Expected inner object for variant fields",
-            );
-
-            // parse closure field extractions
+            // parse closure field extractions (positional from tuple)
             let field_parse_in_closure: Vec<proc_macro2::TokenStream> = field_names
                 .iter()
-                .zip(field_name_strings.iter())
-                .map(|(name, name_str)| {
+                .map(|name| {
                     let basic_name = format_ident!("basic_{}", name);
                     quote! {
-                        let #name = {
-                            let raw_val = inner_map.remove(#name_str)
-                                .unwrap_or_else(|| panic!("Missing field '{}'", #name_str));
-                            #basic_name.parse_raw(raw_val)
-                        };
+                        let #name = #basic_name.parse_raw(
+                            iter.next().unwrap_or_else(|| panic!("Missing element in tuple"))
+                        );
                     }
                 })
                 .collect();
@@ -643,20 +610,12 @@ fn generate_variant_generator(
                     fn as_basic(&self) -> Option<hegel::generators::BasicGenerator<'_, #enum_name>> {
                         use hegel::generators::Generate;
 
-                        let variant_name_str = stringify!(#variant_name);
-
                         #(#basic_bindings)*
 
-                        let inner_schema = #inner_schema_ts;
-                        let schema = #outer_schema_ts;
+                        let schema = #schema_ts;
 
                         Some(hegel::generators::BasicGenerator::new(schema, move |raw| {
-                            #parse_outer_ts
-
-                            let inner_raw = outer_map.remove(variant_name_str)
-                                .unwrap_or_else(|| panic!("Missing variant key '{}'", variant_name_str));
-
-                            #parse_inner_ts
+                            #parse_iter_ts
 
                             #(#field_parse_in_closure)*
 
@@ -669,18 +628,6 @@ fn generate_variant_generator(
             }
         }
         VariantKind::TupleSingle { field_type } => {
-            let vname_text =
-                quote! { hegel::ciborium::Value::Text(variant_name_str.to_string()) };
-            let schema_ts = object_schema(
-                vec![(vname_text.clone(), quote! { value_schema })],
-                vec![vname_text],
-            );
-            let parse_outer_ts = cbor_map_to_hashmap(
-                "outer_map",
-                quote! { raw },
-                "Expected object for enum variant",
-            );
-
             quote! {
                 /// Generated generator for the #variant_name variant of #enum_name.
                 pub struct #variant_generator_name<'a> {
@@ -732,19 +679,11 @@ fn generate_variant_generator(
                     fn as_basic(&self) -> Option<hegel::generators::BasicGenerator<'_, #enum_name>> {
                         use hegel::generators::Generate;
 
-                        let variant_name_str = stringify!(#variant_name);
                         let value_basic = self.value.as_basic()?;
-                        let value_schema = value_basic.schema().clone();
-
-                        let schema = #schema_ts;
+                        let schema = value_basic.schema().clone();
 
                         Some(hegel::generators::BasicGenerator::new(schema, move |raw| {
-                            #parse_outer_ts
-
-                            let field_raw = outer_map.remove(variant_name_str)
-                                .unwrap_or_else(|| panic!("Missing variant key '{}'", variant_name_str));
-
-                            #enum_name::#variant_name(value_basic.parse_raw(field_raw))
+                            #enum_name::#variant_name(value_basic.parse_raw(raw))
                         }))
                     }
                 }
@@ -831,18 +770,8 @@ fn generate_variant_generator(
                 })
                 .collect();
 
-            let inner_schema_ts = tuple_schema(schema_elements);
-            let vname_text =
-                quote! { hegel::ciborium::Value::Text(variant_name_str.to_string()) };
-            let outer_schema_ts = object_schema(
-                vec![(vname_text.clone(), quote! { inner_schema })],
-                vec![vname_text],
-            );
-            let parse_outer_ts = cbor_map_to_hashmap(
-                "outer_map",
-                quote! { raw },
-                "Expected object for enum variant",
-            );
+            let schema_ts = tuple_schema(schema_elements);
+            let parse_iter_ts = cbor_to_iter("iter", quote! { raw }, "Expected tuple for variant fields");
 
             quote! {
                 /// Generated generator for the #variant_name variant of #enum_name.
@@ -886,24 +815,12 @@ fn generate_variant_generator(
                     fn as_basic(&self) -> Option<hegel::generators::BasicGenerator<'_, #enum_name>> {
                         use hegel::generators::Generate;
 
-                        let variant_name_str = stringify!(#variant_name);
-
                         #(#basic_bindings)*
 
-                        let inner_schema = #inner_schema_ts;
-                        let schema = #outer_schema_ts;
+                        let schema = #schema_ts;
 
                         Some(hegel::generators::BasicGenerator::new(schema, move |raw| {
-                            #parse_outer_ts
-
-                            let tuple_raw = outer_map.remove(variant_name_str)
-                                .unwrap_or_else(|| panic!("Missing variant key '{}'", variant_name_str));
-
-                            let arr = match tuple_raw {
-                                hegel::ciborium::Value::Array(arr) => arr,
-                                _ => panic!("Expected array for tuple variant, got {:?}", tuple_raw),
-                            };
-                            let mut iter = arr.into_iter();
+                            #parse_iter_ts
 
                             #(#parse_raw_extractions)*
 

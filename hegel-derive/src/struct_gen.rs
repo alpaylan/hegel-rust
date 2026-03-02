@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{DeriveInput, Fields};
 
-use crate::utils::{cbor_text, cbor_map_to_hashmap, default_gen_bounds, object_schema};
+use crate::utils::{cbor_to_iter, default_gen_bounds, tuple_schema};
 
 /// Derive Generate for a struct.
 pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct) -> TokenStream {
@@ -82,9 +82,6 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
         }
     });
 
-    // Generate field name strings for schema
-    let field_name_strings: Vec<String> = field_names.iter().map(|n| n.to_string()).collect();
-
     // Generate per-field basic bindings: let basic_field = self.field.as_basic()?;
     let basic_bindings: Vec<proc_macro2::TokenStream> = field_names
         .iter()
@@ -94,31 +91,24 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
         })
         .collect();
 
-    // Generate schema properties entries from basics
-    let schema_properties: Vec<_> = field_names
+    // Generate schema elements from basics (positional, in field order)
+    let schema_elements: Vec<_> = field_names
         .iter()
-        .zip(field_name_strings.iter())
-        .map(|(name, name_str)| {
+        .map(|name| {
             let basic_name = format_ident!("basic_{}", name);
-            (cbor_text(name_str), quote! { #basic_name.schema().clone() })
+            quote! { #basic_name.schema().clone() }
         })
         .collect();
 
-    // Generate required entries
-    let schema_required: Vec<_> = field_name_strings.iter().map(|s| cbor_text(s)).collect();
-
-    // Generate per-field extraction in parse closure
+    // Generate per-field extraction in parse closure (positional from tuple)
     let field_parse_in_closure: Vec<proc_macro2::TokenStream> = field_names
         .iter()
-        .zip(field_name_strings.iter())
-        .map(|(name, name_str)| {
+        .map(|name| {
             let basic_name = format_ident!("basic_{}", name);
             quote! {
-                let #name = {
-                    let raw_val = fields.remove(#name_str)
-                        .unwrap_or_else(|| panic!("Missing field '{}' in object", #name_str));
-                    #basic_name.parse_raw(raw_val)
-                };
+                let #name = #basic_name.parse_raw(
+                    iter.next().unwrap_or_else(|| panic!("Missing element in tuple"))
+                );
             }
         })
         .collect();
@@ -128,8 +118,8 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
     // Generate DefaultGenerator bounds (same as new() but with 'static lifetime)
     let default_generator_bounds = default_gen_bounds(&field_types, quote! { 'static });
 
-    let schema_ts = object_schema(schema_properties, schema_required);
-    let parse_map_ts = cbor_map_to_hashmap("fields", quote! { raw }, "Expected object from struct schema");
+    let schema_ts = tuple_schema(schema_elements);
+    let parse_iter_ts = cbor_to_iter("iter", quote! { raw }, "Expected tuple from struct schema");
 
     let expanded = quote! {
         const _: () = {
@@ -182,7 +172,7 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
                     let schema = #schema_ts;
 
                     Some(hegel::generators::BasicGenerator::new(schema, move |raw| {
-                        #parse_map_ts
+                        #parse_iter_ts
 
                         #(#field_parse_in_closure)*
 

@@ -14,7 +14,7 @@ use std::sync::{Arc, Once};
 use std::time::Duration;
 use tempfile::TempDir;
 
-const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.1, 0.1);
+const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.1, 0.3);
 static PANIC_HOOK_INIT: Once = Once::new();
 
 thread_local! {

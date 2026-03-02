@@ -58,8 +58,33 @@ impl From<ciborium::Value> for HegelValue {
                     })
                     .collect(),
             ),
-            ciborium::Value::Tag(_, inner) => HegelValue::from(*inner),
-            _ => HegelValue::Null,
+            ciborium::Value::Tag(2, inner) => {
+                // CBOR tag 2: positive bignum, encoded as big-endian bytes
+                let ciborium::Value::Bytes(bytes) = *inner else {
+                    panic!("Expected Bytes inside bignum tag 2, got {:?}", inner)
+                };
+                let mut n = 0u128;
+                for b in &bytes {
+                    n = (n << 8) | (*b as u128);
+                }
+                HegelValue::BigInt(n.to_string())
+            }
+            ciborium::Value::Tag(3, inner) => {
+                // CBOR tag 3: negative bignum, value is -1 - n
+                let ciborium::Value::Bytes(bytes) = *inner else {
+                    panic!("Expected Bytes inside bignum tag 3, got {:?}", inner)
+                };
+                let mut n = 0u128;
+                for b in &bytes {
+                    n = (n << 8) | (*b as u128);
+                }
+                let result = -1i128 - n as i128;
+                HegelValue::BigInt(result.to_string())
+            }
+            ciborium::Value::Tag(tag, _) => {
+                panic!("Unexpected CBOR tag {tag} in protocol value")
+            }
+            other => panic!("Unexpected CBOR value type: {:?}", other),
         }
     }
 }

@@ -148,7 +148,7 @@ where
         let allow_infinity = self.allow_infinity.unwrap_or(!has_min || !has_max);
 
         let mut schema = cbor_map! {
-            "type" => "number",
+            "type" => "float",
             "exclude_min" => self.exclude_min,
             "exclude_max" => self.exclude_max,
             "allow_nan" => allow_nan,

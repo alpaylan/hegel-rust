@@ -1,22 +1,10 @@
-use super::{integers, labels, BasicGenerator, Collection, Generate, TestCaseData};
+use super::{integers, labels, BasicGenerator, BoxedGenerator, Collection, Generate, TestCaseData};
 use crate::cbor_utils::{cbor_map, map_insert};
 use ciborium::Value;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
-
-/// Extract an array from a Value, handling both plain Arrays and CBOR Tag(258, Array)
-/// which is the standard CBOR tag for sets.
-fn extract_array(raw: Value) -> Vec<Value> {
-    match raw {
-        Value::Array(arr) => arr,
-        Value::Tag(258, inner) => match *inner {
-            Value::Array(arr) => arr,
-            other => panic!("Expected array inside set tag, got {:?}", other),
-        },
-        other => panic!("Expected array or tagged set, got {:?}", other),
-    }
-}
+use std::sync::Arc;
 
 pub struct VecGenerator<G, T> {
     pub(crate) elements: G,
@@ -68,10 +56,9 @@ where
         let elem_basic = self.elements.as_basic()?;
         let elem_schema = elem_basic.schema().clone();
 
-        let schema_type = if self.unique { "set" } else { "list" };
-
         let mut schema = cbor_map! {
-            "type" => schema_type,
+            "type" => "list",
+            "unique" => self.unique,
             "elements" => elem_schema,
             "min_size" => self.min_size as u64
         };
@@ -81,13 +68,15 @@ where
         }
 
         Some(BasicGenerator::new(schema, move |raw| {
-            let arr = extract_array(raw);
+            let Value::Array(arr) = raw else {
+                panic!("Expected array, got {:?}", raw)
+            };
             arr.into_iter().map(|v| elem_basic.parse_raw(v)).collect()
         }))
     }
 }
 
-/// Generate vectors (lists).
+/// Generate vectors.
 pub fn vecs<T, G: Generate<T>>(elements: G) -> VecGenerator<G, T> {
     VecGenerator {
         elements,
@@ -152,7 +141,8 @@ where
         let elem_schema = elem_basic.schema().clone();
 
         let mut schema = cbor_map! {
-            "type" => "set",
+            "type" => "list",
+            "unique" => true,
             "elements" => elem_schema,
             "min_size" => self.min_size as u64
         };
@@ -162,7 +152,9 @@ where
         }
 
         Some(BasicGenerator::new(schema, move |raw| {
-            let arr = extract_array(raw);
+            let Value::Array(arr) = raw else {
+                panic!("Expected array, got {:?}", raw)
+            };
             arr.into_iter().map(|v| elem_basic.parse_raw(v)).collect()
         }))
     }
@@ -283,11 +275,7 @@ where
 /// use hegel::generators::{hashmaps, integers, text};
 /// use std::collections::HashMap;
 ///
-/// // String keys
-/// let string_keyed: HashMap<String, i32> = hegel::draw(&hashmaps(text(), integers()));
-///
-/// // Integer keys
-/// let int_keyed: HashMap<i32, String> = hegel::draw(&hashmaps(integers(), text()));
+/// let map: HashMap<i32, String> = hegel::draw(&hashmaps(integers(), text()));
 /// ```
 pub fn hashmaps<KT, VT, K: Generate<KT>, V: Generate<VT>>(
     keys: K,
@@ -299,5 +287,174 @@ pub fn hashmaps<KT, VT, K: Generate<KT>, V: Generate<VT>>(
         min_size: 0,
         max_size: None,
         _phantom: PhantomData,
+    }
+}
+
+pub(crate) struct MappedToValue<T, G> {
+    inner: G,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<T: serde::Serialize, G: Generate<T>> Generate<Value> for MappedToValue<T, G> {
+    fn do_draw(&self, data: &TestCaseData) -> Value {
+        crate::cbor_utils::cbor_serialize(&self.inner.do_draw(data))
+    }
+
+    fn as_basic(&self) -> Option<BasicGenerator<'_, Value>> {
+        let inner_basic = self.inner.as_basic()?;
+        let schema = inner_basic.schema().clone();
+        Some(BasicGenerator::new(schema, move |raw| {
+            let t_val = inner_basic.parse_raw(raw);
+            crate::cbor_utils::cbor_serialize(&t_val)
+        }))
+    }
+}
+
+pub struct FixedDictBuilder<'a> {
+    fields: Vec<(String, BoxedGenerator<'a, Value>)>,
+}
+
+impl<'a> FixedDictBuilder<'a> {
+    pub fn field<T, G>(mut self, name: &str, gen: G) -> Self
+    where
+        G: Generate<T> + Send + Sync + 'a,
+        T: serde::Serialize + 'a,
+    {
+        let boxed = BoxedGenerator {
+            inner: Arc::new(MappedToValue {
+                inner: gen,
+                _phantom: PhantomData,
+            }),
+        };
+        self.fields.push((name.to_string(), boxed));
+        self
+    }
+
+    pub fn build(self) -> FixedDictGenerator<'a> {
+        FixedDictGenerator {
+            fields: self.fields,
+        }
+    }
+}
+
+pub struct FixedDictGenerator<'a> {
+    fields: Vec<(String, BoxedGenerator<'a, Value>)>,
+}
+
+impl Generate<Value> for FixedDictGenerator<'_> {
+    fn do_draw(&self, data: &TestCaseData) -> Value {
+        if let Some(basic) = self.as_basic() {
+            basic.do_draw(data)
+        } else {
+            // Compositional fallback
+            data.span_group(labels::FIXED_DICT, || {
+                let entries: Vec<(Value, Value)> = self
+                    .fields
+                    .iter()
+                    .map(|(name, gen)| (Value::Text(name.clone()), gen.do_draw(data)))
+                    .collect();
+                Value::Map(entries)
+            })
+        }
+    }
+
+    fn as_basic(&self) -> Option<BasicGenerator<'_, Value>> {
+        let basics: Vec<BasicGenerator<'_, Value>> = self
+            .fields
+            .iter()
+            .map(|(_, gen)| gen.as_basic())
+            .collect::<Option<Vec<_>>>()?;
+
+        let schemas: Vec<Value> = basics.iter().map(|b| b.schema().clone()).collect();
+
+        let schema = cbor_map! {
+            "type" => "tuple",
+            "elements" => Value::Array(schemas)
+        };
+
+        let field_names: Vec<String> = self.fields.iter().map(|(name, _)| name.clone()).collect();
+
+        Some(BasicGenerator::new(schema, move |raw| {
+            let arr = match raw {
+                Value::Array(arr) => arr,
+                _ => panic!("Expected array from tuple schema, got {:?}", raw),
+            };
+
+            let entries: Vec<(Value, Value)> = field_names
+                .iter()
+                .zip(basics.iter())
+                .zip(arr)
+                .map(|((name, basic), val)| (Value::Text(name.clone()), basic.parse_raw(val)))
+                .collect();
+            Value::Map(entries)
+        }))
+    }
+}
+
+/// Create a generator for dictionaries with fixed keys.
+///
+/// # Example
+///
+/// ```no_run
+/// use hegel::generators::{self, Generate};
+///
+/// let gen = generators::fixed_dicts()
+///     .field("name", generators::text())
+///     .field("age", generators::integers::<u32>())
+///     .build();
+/// ```
+pub fn fixed_dicts<'a>() -> FixedDictBuilder<'a> {
+    FixedDictBuilder { fields: Vec::new() }
+}
+
+pub struct ArrayGenerator<G, T, const N: usize> {
+    element: G,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<G, T, const N: usize> ArrayGenerator<G, T, N> {
+    pub fn new(element: G) -> Self {
+        ArrayGenerator {
+            element,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+pub fn arrays<G: Generate<T> + Send + Sync, T, const N: usize>(
+    element: G,
+) -> ArrayGenerator<G, T, N> {
+    ArrayGenerator::new(element)
+}
+
+impl<G: Generate<T> + Send + Sync, T, const N: usize> Generate<[T; N]> for ArrayGenerator<G, T, N> {
+    fn do_draw(&self, data: &TestCaseData) -> [T; N] {
+        if let Some(basic) = self.as_basic() {
+            basic.do_draw(data)
+        } else {
+            data.span_group(labels::TUPLE, || {
+                std::array::from_fn(|_| self.element.do_draw(data))
+            })
+        }
+    }
+
+    fn as_basic(&self) -> Option<BasicGenerator<'_, [T; N]>> {
+        let basic = self.element.as_basic()?;
+
+        let elements = Value::Array((0..N).map(|_| basic.schema().clone()).collect());
+        let schema = cbor_map! {
+            "type" => "tuple",
+            "elements" => elements
+        };
+
+        Some(BasicGenerator::new(schema, move |raw| {
+            let arr = match raw {
+                Value::Array(arr) => arr,
+                _ => panic!("Expected array from tuple schema, got {:?}", raw),
+            };
+            assert_eq!(arr.len(), N);
+            let mut iter = arr.into_iter();
+            std::array::from_fn(|_| basic.parse_raw(iter.next().unwrap()))
+        }))
     }
 }

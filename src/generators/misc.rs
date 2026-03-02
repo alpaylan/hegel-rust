@@ -28,6 +28,29 @@ pub fn just<T: Clone + Send + Sync>(value: T) -> JustGenerator<T> {
     JustGenerator { value }
 }
 
+pub struct NoneGenerator<T> {
+    _phantom: std::marker::PhantomData<fn() -> T>,
+}
+
+impl<T: Send + Sync> Generate<Option<T>> for NoneGenerator<T> {
+    fn do_draw(&self, _data: &TestCaseData) -> Option<T> {
+        None
+    }
+
+    fn as_basic(&self) -> Option<BasicGenerator<'_, Option<T>>> {
+        Some(BasicGenerator::new(
+            cbor_map! {"const" => Value::Null},
+            |_| None,
+        ))
+    }
+}
+
+pub fn none<T: Send + Sync>() -> NoneGenerator<T> {
+    NoneGenerator {
+        _phantom: std::marker::PhantomData,
+    }
+}
+
 pub struct BoolGenerator;
 
 impl Generate<bool> for BoolGenerator {

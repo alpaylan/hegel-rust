@@ -22,33 +22,25 @@ pub(crate) fn cbor_array(items: Vec<proc_macro2::TokenStream>) -> proc_macro2::T
 
 // --- Schema construction helpers ---
 
-pub(crate) fn object_schema(
-    properties: Vec<(proc_macro2::TokenStream, proc_macro2::TokenStream)>,
-    required: Vec<proc_macro2::TokenStream>,
-) -> proc_macro2::TokenStream {
+pub(crate) fn tuple_schema(elements: Vec<proc_macro2::TokenStream>) -> proc_macro2::TokenStream {
     cbor_map(vec![
-        (cbor_text("type"), cbor_text("object")),
-        (cbor_text("properties"), cbor_map(properties)),
-        (cbor_text("required"), cbor_array(required)),
+        (cbor_text("type"), cbor_text("tuple")),
+        (cbor_text("elements"), cbor_array(elements)),
     ])
 }
 
-// --- CBOR parsing helper ---
+// --- CBOR parsing helpers ---
 
-pub(crate) fn cbor_map_to_hashmap(
+pub(crate) fn cbor_to_iter(
     var_name: &str,
     source: proc_macro2::TokenStream,
     error_msg: &str,
 ) -> proc_macro2::TokenStream {
     let var = format_ident!("{}", var_name);
     quote! {
-        let mut #var: std::collections::HashMap<String, hegel::ciborium::Value> = match #source {
-            hegel::ciborium::Value::Map(entries) => {
-                entries.into_iter().filter_map(|(k, v)| {
-                    if let hegel::ciborium::Value::Text(key) = k { Some((key, v)) } else { None }
-                }).collect()
-            }
-            _ => panic!(concat!(#error_msg, ", got {:?}"), #source),
+        let mut #var = match #source {
+            hegel::ciborium::Value::Array(arr) => arr.into_iter(),
+            other => panic!(concat!(#error_msg, ", got {:?}"), other),
         };
     }
 }
