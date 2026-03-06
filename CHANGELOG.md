@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.13 - 2026-03-06
+
+Add support for `i128`, `u128`, and `isuze` in `generators::integers`.
+
 ## 0.1.12 - 2026-03-02
 
 Support new hegel protocol versions.
