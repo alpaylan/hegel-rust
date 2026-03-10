@@ -21,10 +21,10 @@ check-format:
     cargo fmt --check
 
 format-nix:
-    nix run nixpkgs#nixfmt -- flake.nix
+    nix run nixpkgs#nixfmt -- nix/flake.nix
 
 check-format-nix:
-    nix run nixpkgs#nixfmt -- --check flake.nix
+    nix run nixpkgs#nixfmt -- --check nix/flake.nix
 
 lint:
     cargo fmt --check
