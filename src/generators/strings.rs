@@ -8,13 +8,13 @@ pub struct TextGenerator {
 }
 
 impl TextGenerator {
-    pub fn with_min_size(mut self, min: usize) -> Self {
-        self.min_size = min;
+    pub fn min_size(mut self, min_size: usize) -> Self {
+        self.min_size = min_size;
         self
     }
 
-    pub fn with_max_size(mut self, max: usize) -> Self {
-        self.max_size = Some(max);
+    pub fn max_size(mut self, max_size: usize) -> Self {
+        self.max_size = Some(max_size);
         self
     }
 
@@ -25,7 +25,7 @@ impl TextGenerator {
         };
 
         if let Some(max) = self.max_size {
-            map_insert(&mut schema, "max_size", Value::from(max as u64));
+            map_insert(&mut schema, "max_size", max as u64);
         }
 
         schema
@@ -94,22 +94,19 @@ pub fn from_regex(pattern: &str) -> RegexGenerator {
     }
 }
 
-/// Generator for binary data (byte sequences).
 pub struct BinaryGenerator {
     min_size: usize,
     max_size: Option<usize>,
 }
 
 impl BinaryGenerator {
-    /// Set the minimum size in bytes.
-    pub fn with_min_size(mut self, min: usize) -> Self {
-        self.min_size = min;
+    pub fn min_size(mut self, min_size: usize) -> Self {
+        self.min_size = min_size;
         self
     }
 
-    /// Set the maximum size in bytes.
-    pub fn with_max_size(mut self, max: usize) -> Self {
-        self.max_size = Some(max);
+    pub fn max_size(mut self, max_size: usize) -> Self {
+        self.max_size = Some(max_size);
         self
     }
 
@@ -120,7 +117,7 @@ impl BinaryGenerator {
         };
 
         if let Some(max) = self.max_size {
-            map_insert(&mut schema, "max_size", Value::from(max as u64));
+            map_insert(&mut schema, "max_size", max as u64);
         }
 
         schema
@@ -130,10 +127,7 @@ impl BinaryGenerator {
 fn parse_binary(raw: Value) -> Vec<u8> {
     match raw {
         Value::Bytes(bytes) => bytes,
-        _ => panic!(
-            "Expected CBOR byte string from binary schema, got {:?}",
-            raw
-        ),
+        _ => panic!("expected Value::Bytes, got {:?}", raw),
     }
 }
 
@@ -147,7 +141,7 @@ impl Generate<Vec<u8>> for BinaryGenerator {
     }
 }
 
-/// Generate binary data (byte sequences).
+/// Generate binary data.
 ///
 /// # Example
 ///
@@ -158,7 +152,7 @@ impl Generate<Vec<u8>> for BinaryGenerator {
 /// let gen = generators::binary();
 ///
 /// // Generate 16-32 bytes
-/// let gen = generators::binary().with_min_size(16).with_max_size(32);
+/// let gen = generators::binary().min_size(16).max_size(32);
 /// ```
 pub fn binary() -> BinaryGenerator {
     BinaryGenerator {
@@ -208,8 +202,8 @@ pub struct DomainGenerator {
 }
 
 impl DomainGenerator {
-    pub fn with_max_length(mut self, max: usize) -> Self {
-        self.max_length = max;
+    pub fn max_length(mut self, max_length: usize) -> Self {
+        self.max_length = max_length;
         self
     }
 

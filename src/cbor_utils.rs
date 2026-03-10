@@ -36,32 +36,34 @@ macro_rules! cbor_array {
 pub(crate) use cbor_array;
 pub(crate) use cbor_map;
 
-/// Look up a text key in a `Value::Map`.
 pub fn map_get<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
-    if let Value::Map(entries) = value {
-        for (k, v) in entries {
-            if let Value::Text(s) = k {
-                if s == key {
-                    return Some(v);
-                }
+    let Value::Map(entries) = value else {
+        panic!("expected Value::Map, got {value:?}");
+    };
+    for (k, v) in entries {
+        if let Value::Text(s) = k {
+            if s == key {
+                return Some(v);
             }
         }
     }
     None
 }
 
-pub fn map_insert(value: &mut Value, key: &str, val: Value) {
-    if let Value::Map(entries) = value {
-        for (k, v) in entries.iter_mut() {
-            if let Value::Text(s) = k {
-                if s == key {
-                    *v = val;
-                    return;
-                }
+pub fn map_insert(value: &mut Value, key: &str, val: impl Into<Value>) {
+    let Value::Map(entries) = value else {
+        panic!("expected Value::Map, got {value:?}");
+    };
+    let val = val.into();
+    for (k, v) in entries.iter_mut() {
+        if let Value::Text(s) = k {
+            if s == key {
+                *v = val;
+                return;
             }
         }
-        entries.push((Value::Text(String::from(key)), val));
     }
+    entries.push((Value::Text(String::from(key)), val));
 }
 
 pub fn as_text(value: &Value) -> Option<&str> {
@@ -118,11 +120,10 @@ mod tests {
     #[test]
     fn test_map_insert() {
         let mut m = cbor_map! { "a" => 1 };
-        map_insert(&mut m, "b", Value::from(2));
+        map_insert(&mut m, "b", 2);
         assert_eq!(as_u64(map_get(&m, "b").unwrap()), Some(2));
 
-        // Update existing key
-        map_insert(&mut m, "a", Value::from(10));
+        map_insert(&mut m, "a", 10);
         assert_eq!(as_u64(map_get(&m, "a").unwrap()), Some(10));
     }
 

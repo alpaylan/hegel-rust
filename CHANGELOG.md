@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-03-10
+
+Remove `with_*` prefix from builder methods.
+
 ## 0.2.0 - 2026-03-09
 
 Automatically manage hegel server installation. Adds a runtime requirement on `uv`.
