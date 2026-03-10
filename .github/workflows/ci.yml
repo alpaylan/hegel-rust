@@ -154,7 +154,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y just
       - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
 
-      - run: just setup
       - name: Run coverage
         run: RUST_BACKTRACE=1 just coverage
 
@@ -178,7 +177,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y just
       - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
 
-      - run: just setup
       - name: Run conformance tests
         run: just conformance
 

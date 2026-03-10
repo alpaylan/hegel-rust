@@ -38,7 +38,6 @@ For a full walkthrough, see [docs/getting-started.md](docs/getting-started.md).
 ## Development
 
 ```bash
-just setup       # Install dependencies (hegel binary)
 just check       # Full CI: lint + docs + tests
 just test        # Run tests only
 just conformance # Run cross-language conformance tests
