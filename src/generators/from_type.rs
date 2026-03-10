@@ -31,14 +31,15 @@ pub trait DefaultGenerator: Sized {
 ///     age: u32,
 /// }
 ///
-/// # hegel::hegel(|| {
-/// // Generate with defaults
-/// let person: Person = hegel::draw(&generators::from_type::<Person>());
+/// #[hegel::test]
+/// fn my_test() {
+///     // Generate with defaults
+///     let person: Person = hegel::draw(&generators::from_type::<Person>());
 ///
-/// // Customize field generators
-/// let person: Person = hegel::draw(&generators::from_type::<Person>()
-///     .with_age(generators::integers().min_value(0).max_value(120)));
-/// # });
+///     // Customize field generators
+///     let person: Person = hegel::draw(&generators::from_type::<Person>()
+///         .with_age(generators::integers().min_value(0).max_value(120)));
+/// }
 /// ```
 pub fn from_type<T: DefaultGenerator>() -> T::Generator {
     T::default_generator()
