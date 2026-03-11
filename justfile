@@ -35,6 +35,15 @@ coverage:
     # requires cargo-llvm-cov and llvm-tools-preview
     RUST_BACKTRACE=1 cargo llvm-cov --all-features --fail-under-lines 30 --show-missing-lines
 
+update-hegel-core-version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tag=$(gh api repos/antithesishq/hegel-core/releases/latest --jq '.tag_name')
+    sed -i '' "s/^const HEGEL_SERVER_VERSION: &str = \".*\"/const HEGEL_SERVER_VERSION: \&str = \"${tag}\"/" src/runner.rs
+    echo "Updated HEGEL_SERVER_VERSION to ${tag}"
+    # Clear cached install so the next test run picks up the new version
+    rm -rf .hegel/venv
+
 build-conformance:
     cargo build --release --manifest-path tests/conformance/rust/Cargo.toml
 
