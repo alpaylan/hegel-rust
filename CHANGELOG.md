@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.5 - 2026-03-11
+
+Set `HEGEL_SERVER_COMMAND` in nix install.
+
+## 0.2.4 - 2026-03-11
+
+Fixes a version mismatch with the hegel-core dependency that was causing the entire library to be broken.
+
+Also improves error reporting to not silently swallow panics outside tests and to log server stdout to a file.
+
 ## 0.2.3 - 2026-03-10
 
 Add argument validation.
