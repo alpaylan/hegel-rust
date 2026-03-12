@@ -1,6 +1,6 @@
 # hegel-rust
 
-A Rust SDK for [Hegel](https://github.com/antithesishq/hegel-core) — universal
+A Rust SDK for [Hegel](https://github.com/hegeldev/hegel-core) — universal
 property-based testing powered by [Hypothesis](https://hypothesis.works/).
 
 Hegel generates random inputs for your tests, finds failures, and automatically
@@ -20,12 +20,13 @@ Hegel requires [`uv`](https://docs.astral.sh/uv/), and automatically installs th
 ## Quick Start
 
 ```rust
-use hegel::generators::{self, Generate};
+use hegel::generators::integers;
+use hegel::draw;
 
 #[hegel::test]
 fn test_addition_commutative() {
-    let x = generators::integers::<i32>().generate();
-    let y = generators::integers::<i32>().generate();
+    let x = draw(&integers::<i32>());
+    let y = draw(&integers::<i32>());
     assert_eq!(x + y, y + x);
 }
 ```
