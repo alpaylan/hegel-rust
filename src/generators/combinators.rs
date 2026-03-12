@@ -1,4 +1,4 @@
-use super::{integers, labels, BasicGenerator, BoxedGenerator, Generate, TestCaseData};
+use super::{integers, labels, BasicGenerator, BoxedGenerator, Generate, TestCase};
 use crate::cbor_utils::{cbor_array, cbor_map};
 use ciborium::Value;
 use std::marker::PhantomData;
@@ -8,15 +8,15 @@ pub struct SampledFromGenerator<T> {
 }
 
 impl<T: Clone + Send + Sync> Generate<T> for SampledFromGenerator<T> {
-    fn do_draw(&self, data: &TestCaseData) -> T {
+    fn do_draw(&self, tc: &TestCase) -> T {
         if let Some(basic) = self.as_basic() {
-            return basic.do_draw(data);
+            return basic.do_draw(tc);
         }
 
         let indices = integers::<usize>()
             .min_value(0)
             .max_value(self.elements.len() - 1);
-        let index = indices.do_draw(data);
+        let index = indices.do_draw(tc);
         self.elements[index].clone()
     }
 
@@ -51,17 +51,17 @@ pub struct OneOfGenerator<'a, T> {
 }
 
 impl<T> Generate<T> for OneOfGenerator<'_, T> {
-    fn do_draw(&self, data: &TestCaseData) -> T {
+    fn do_draw(&self, tc: &TestCase) -> T {
         if let Some(basic) = self.as_basic() {
-            basic.do_draw(data)
+            basic.do_draw(tc)
         } else {
-            data.start_span(labels::ONE_OF);
+            tc.start_span(labels::ONE_OF);
             let index = integers::<usize>()
                 .min_value(0)
                 .max_value(self.generators.len() - 1)
-                .do_draw(data);
-            let result = self.generators[index].do_draw(data);
-            data.stop_span(false);
+                .do_draw(tc);
+            let result = self.generators[index].do_draw(tc);
+            tc.stop_span(false);
             result
         }
     }
@@ -129,7 +129,7 @@ pub fn one_of<T>(generators: Vec<BoxedGenerator<'_, T>>) -> OneOfGenerator<'_, T
 /// use hegel::generators;
 ///
 /// #[hegel::test]
-/// fn my_test(tc: hegel::TestCase) {
+/// fn my_test(tc: &hegel::TestCase) {
 ///     let value: i32 = tc.draw(&hegel::one_of!(
 ///         generators::integers::<i32>().min_value(0).max_value(10),
 ///         generators::integers::<i32>().min_value(100).max_value(110),
@@ -154,18 +154,18 @@ impl<T, G> Generate<Option<T>> for OptionalGenerator<G, T>
 where
     G: Generate<T>,
 {
-    fn do_draw(&self, data: &TestCaseData) -> Option<T> {
+    fn do_draw(&self, tc: &TestCase) -> Option<T> {
         if let Some(basic) = self.as_basic() {
-            basic.do_draw(data)
+            basic.do_draw(tc)
         } else {
-            data.start_span(labels::OPTIONAL);
-            let is_some: bool = data.generate_from_schema(&cbor_map! {"type" => "boolean"});
+            tc.start_span(labels::OPTIONAL);
+            let is_some: bool = super::generate_from_schema(tc,&cbor_map! {"type" => "boolean"});
             let result = if is_some {
-                Some(self.inner.do_draw(data))
+                Some(self.inner.do_draw(tc))
             } else {
                 None
             };
-            data.stop_span(false);
+            tc.stop_span(false);
             result
         }
     }

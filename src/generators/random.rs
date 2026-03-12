@@ -1,7 +1,7 @@
 use rand::rngs::StdRng;
 use rand::{RngCore, SeedableRng};
 
-use super::{binary, integers, test_case_data, Generate, TestCaseData};
+use super::{binary, integers, Generate, TestCase};
 
 pub struct RandomsGenerator {
     use_true_random: bool,
@@ -22,57 +22,44 @@ impl RandomsGenerator {
 }
 
 impl Generate<HegelRandom> for RandomsGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> HegelRandom {
+    fn do_draw(&self, tc: &TestCase) -> HegelRandom {
         if self.use_true_random {
-            let seed: u64 = integers().do_draw(data);
+            let seed: u64 = integers().do_draw(tc);
             HegelRandom::TrueRandom(Box::new(StdRng::seed_from_u64(seed)))
         } else {
-            HegelRandom::ArtificialRandom
+            HegelRandom::ArtificialRandom(tc.clone())
         }
     }
 }
 
 #[derive(Debug)]
 pub enum HegelRandom {
-    ArtificialRandom,
+    ArtificialRandom(TestCase),
     TrueRandom(Box<StdRng>),
 }
 
 impl RngCore for HegelRandom {
     fn next_u32(&mut self) -> u32 {
         match self {
-            Self::ArtificialRandom => {
-                let data = test_case_data().expect(
-                    "Can't use random instances from randoms() used outside of a Hegel test",
-                );
-                integers().do_draw(data)
-            }
+            Self::ArtificialRandom(tc) => integers().do_draw(tc),
             Self::TrueRandom(rng) => rng.next_u32(),
         }
     }
 
     fn next_u64(&mut self) -> u64 {
         match self {
-            Self::ArtificialRandom => {
-                let data = test_case_data().expect(
-                    "Can't use random instances from randoms() used outside of a Hegel test",
-                );
-                integers().do_draw(data)
-            }
+            Self::ArtificialRandom(tc) => integers().do_draw(tc),
             Self::TrueRandom(rng) => rng.next_u64(),
         }
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         match self {
-            Self::ArtificialRandom => {
-                let data = test_case_data().expect(
-                    "Can't use random instances from randoms() used outside of a Hegel test",
-                );
+            Self::ArtificialRandom(tc) => {
                 let bytes: Vec<u8> = binary()
                     .min_size(dest.len())
                     .max_size(dest.len())
-                    .do_draw(data);
+                    .do_draw(tc);
                 dest.copy_from_slice(&bytes);
             }
             Self::TrueRandom(rng) => rng.fill_bytes(dest),

@@ -32,7 +32,7 @@ pub trait DefaultGenerator: Sized {
 /// }
 ///
 /// #[hegel::test]
-/// fn my_test(tc: hegel::TestCase) {
+/// fn my_test(tc: &hegel::TestCase) {
 ///     // Generate with defaults
 ///     let person: Person = tc.draw(&generators::from_type::<Person>());
 ///
@@ -277,7 +277,7 @@ macro_rules! derive_generator {
                 }
 
                 impl<'a> $crate::generators::Generate<$struct_name> for [<$struct_name Generator>]<'a> {
-                    fn do_draw(&self, __data: &$crate::generators::TestCaseData) -> $struct_name {
+                    fn do_draw(&self, __data: &$crate::TestCase) -> $struct_name {
                         use $crate::generators::Generate;
                         $struct_name {
                             $($field_name: self.$field_name.do_draw(__data),)*

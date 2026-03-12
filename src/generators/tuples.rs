@@ -1,4 +1,4 @@
-use super::{labels, BasicGenerator, DefaultGenerator, Generate, TestCaseData};
+use super::{labels, BasicGenerator, DefaultGenerator, Generate, TestCase};
 use crate::cbor_utils::{cbor_array, cbor_map};
 use ciborium::Value;
 use std::marker::PhantomData;
@@ -14,13 +14,13 @@ macro_rules! impl_tuple {
         where
             $($G: Generate<$T>,)+
         {
-            fn do_draw(&self, data: &TestCaseData) -> ($($T,)+) {
+            fn do_draw(&self, tc: &TestCase) -> ($($T,)+) {
                 if let Some(basic) = self.as_basic() {
-                    basic.do_draw(data)
+                    basic.do_draw(tc)
                 } else {
-                    data.start_span(labels::TUPLE);
-                    let result = ($(self.$field.do_draw(data),)+);
-                    data.stop_span(false);
+                    tc.start_span(labels::TUPLE);
+                    let result = ($(self.$field.do_draw(tc),)+);
+                    tc.stop_span(false);
                     result
                 }
             }

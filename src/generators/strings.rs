@@ -1,4 +1,4 @@
-use super::{BasicGenerator, Generate, TestCaseData};
+use super::{BasicGenerator, Generate, TestCase};
 use crate::cbor_utils::{cbor_array, cbor_map, map_insert};
 use ciborium::Value;
 
@@ -37,8 +37,8 @@ impl TextGenerator {
 }
 
 impl Generate<String> for TextGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -77,8 +77,8 @@ impl RegexGenerator {
 }
 
 impl Generate<String> for RegexGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -140,8 +140,8 @@ fn parse_binary(raw: Value) -> Vec<u8> {
 }
 
 impl Generate<Vec<u8>> for BinaryGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> Vec<u8> {
-        parse_binary(data.generate_raw(&self.build_schema()))
+    fn do_draw(&self, tc: &TestCase) -> Vec<u8> {
+        parse_binary(super::generate_raw(tc, &self.build_schema()))
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, Vec<u8>>> {
@@ -172,8 +172,8 @@ pub fn binary() -> BinaryGenerator {
 pub struct EmailGenerator;
 
 impl Generate<String> for EmailGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&cbor_map! {"type" => "email"})
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&cbor_map! {"type" => "email"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -190,8 +190,8 @@ pub fn emails() -> EmailGenerator {
 pub struct UrlGenerator;
 
 impl Generate<String> for UrlGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&cbor_map! {"type" => "url"})
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&cbor_map! {"type" => "url"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -229,8 +229,8 @@ impl DomainGenerator {
 }
 
 impl Generate<String> for DomainGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -280,8 +280,8 @@ impl IpAddressGenerator {
 }
 
 impl Generate<String> for IpAddressGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -298,8 +298,8 @@ pub fn ip_addresses() -> IpAddressGenerator {
 pub struct DateGenerator;
 
 impl Generate<String> for DateGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&cbor_map! {"type" => "date"})
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&cbor_map! {"type" => "date"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -316,8 +316,8 @@ pub fn dates() -> DateGenerator {
 pub struct TimeGenerator;
 
 impl Generate<String> for TimeGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&cbor_map! {"type" => "time"})
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&cbor_map! {"type" => "time"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {
@@ -334,8 +334,8 @@ pub fn times() -> TimeGenerator {
 pub struct DateTimeGenerator;
 
 impl Generate<String> for DateTimeGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> String {
-        data.generate_from_schema(&cbor_map! {"type" => "datetime"})
+    fn do_draw(&self, tc: &TestCase) -> String {
+        super::generate_from_schema(tc,&cbor_map! {"type" => "datetime"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, String>> {

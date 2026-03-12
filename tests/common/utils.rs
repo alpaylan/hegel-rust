@@ -60,8 +60,8 @@ where
     }
 
     pub fn run(self) {
-        Hegel::new(move |_tc| {
-            let value = hegel::draw(&self.generator);
+        Hegel::new(move |tc| {
+            let value = tc.draw(&self.generator);
             assert!(
                 (self.predicate)(&value),
                 "Found value that does not match predicate"
@@ -164,8 +164,8 @@ where
         let max_attempts = self.max_attempts;
 
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            Hegel::new(move |_tc| {
-                let value = hegel::draw(&self.generator);
+            Hegel::new(move |tc| {
+                let value = tc.draw(&self.generator);
                 if (self.condition)(&value) {
                     *found_clone.lock().unwrap() = Some(value);
                     panic!("HEGEL_FOUND"); // Early exit marker

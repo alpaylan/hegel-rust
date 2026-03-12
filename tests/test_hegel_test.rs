@@ -15,24 +15,6 @@ fn test_with_settings(tc: TestCase) {
 }
 
 #[test]
-#[should_panic(expected = "draw() cannot be called outside of a Hegel test")]
-fn test_draw_outside_test_panics() {
-    hegel::draw(&generators::booleans());
-}
-
-#[test]
-#[should_panic(expected = "assume() cannot be called outside of a Hegel test")]
-fn test_assume_outside_test_panics() {
-    hegel::assume(true);
-}
-
-#[test]
-#[should_panic(expected = "note() cannot be called outside of a Hegel test")]
-fn test_note_outside_test_panics() {
-    hegel::note("a note");
-}
-
-#[test]
 fn test_duplicate_test_attribute_compile_error() {
     let code = r#"
 use hegel::generators;

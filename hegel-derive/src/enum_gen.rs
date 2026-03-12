@@ -263,9 +263,9 @@ pub(crate) fn derive_enum_generate(input: &DeriveInput, data: &syn::DataEnum) ->
         // All-unit enum: use sampled_from schema
         quote! {
             impl hegel::generators::Generate<#enum_name> for #generator_name {
-                fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #enum_name {
+                fn do_draw(&self, __data: &hegel::TestCase) -> #enum_name {
                     let basic = self.as_basic().unwrap();
-                    basic.parse_raw(__data.generate_raw(basic.schema()))
+                    basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                 }
 
                 fn as_basic(&self) -> Option<hegel::generators::BasicGenerator<'_, #enum_name>> {
@@ -356,13 +356,13 @@ pub(crate) fn derive_enum_generate(input: &DeriveInput, data: &syn::DataEnum) ->
 
         quote! {
             impl<'a> hegel::generators::Generate<#enum_name> for #generator_name<'a> {
-                fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #enum_name {
+                fn do_draw(&self, __data: &hegel::TestCase) -> #enum_name {
                     use hegel::generators::Generate;
                     if let Some(basic) = self.as_basic() {
-                        basic.parse_raw(__data.generate_raw(basic.schema()))
+                        basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                     } else {
                         __data.start_span(hegel::generators::labels::ENUM_VARIANT);
-                        let selected: String = __data.generate_from_schema(
+                        let selected: String = hegel::generate_from_schema(__data,
                             &#sampled_from_schema
                         );
 
@@ -597,10 +597,10 @@ fn generate_variant_generator(
                 }
 
                 impl<'a> hegel::generators::Generate<#enum_name> for #variant_generator_name<'a> {
-                    fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #enum_name {
+                    fn do_draw(&self, __data: &hegel::TestCase) -> #enum_name {
                         use hegel::generators::Generate;
                         if let Some(basic) = self.as_basic() {
-                            basic.parse_raw(__data.generate_raw(basic.schema()))
+                            basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                         } else {
                             #enum_name::#variant_name {
                                 #(#field_constructions,)*
@@ -668,10 +668,10 @@ fn generate_variant_generator(
                 }
 
                 impl<'a> hegel::generators::Generate<#enum_name> for #variant_generator_name<'a> {
-                    fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #enum_name {
+                    fn do_draw(&self, __data: &hegel::TestCase) -> #enum_name {
                         use hegel::generators::Generate;
                         if let Some(basic) = self.as_basic() {
-                            basic.parse_raw(__data.generate_raw(basic.schema()))
+                            basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                         } else {
                             #enum_name::#variant_name(self.value.do_draw(__data))
                         }
@@ -804,10 +804,10 @@ fn generate_variant_generator(
                 }
 
                 impl<'a> hegel::generators::Generate<#enum_name> for #variant_generator_name<'a> {
-                    fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #enum_name {
+                    fn do_draw(&self, __data: &hegel::TestCase) -> #enum_name {
                         use hegel::generators::Generate;
                         if let Some(basic) = self.as_basic() {
-                            basic.parse_raw(__data.generate_raw(basic.schema()))
+                            basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                         } else {
                             #enum_name::#variant_name(#(#field_generates,)*)
                         }

@@ -151,10 +151,10 @@ pub(crate) fn derive_struct_generate(input: &DeriveInput, data: &syn::DataStruct
             }
 
             impl<'a> hegel::generators::Generate<#name> for #generator_name<'a> {
-                fn do_draw(&self, __data: &hegel::generators::TestCaseData) -> #name {
+                fn do_draw(&self, __data: &hegel::TestCase) -> #name {
                     use hegel::generators::Generate;
                     if let Some(basic) = self.as_basic() {
-                        basic.parse_raw(__data.generate_raw(basic.schema()))
+                        basic.parse_raw(hegel::generate_raw(__data, basic.schema()))
                     } else {
                         __data.start_span(hegel::generators::labels::FIXED_DICT);
                         let __result = #name {

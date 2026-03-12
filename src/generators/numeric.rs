@@ -1,4 +1,4 @@
-use super::{BasicGenerator, Generate, TestCaseData};
+use super::{BasicGenerator, Generate, TestCase};
 use crate::cbor_utils::{cbor_map, cbor_serialize, map_insert};
 use ciborium::Value;
 use num::{Bounded, Float as NumFloat, Integer as NumInteger};
@@ -43,8 +43,8 @@ impl<T> Generate<T> for IntegerGenerator<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + Bounded + NumInteger + Send + Sync + Copy,
 {
-    fn do_draw(&self, data: &TestCaseData) -> T {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> T {
+        super::generate_from_schema(tc, &self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, T>> {
@@ -182,8 +182,8 @@ impl<T> Generate<T> for FloatGenerator<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize + NumFloat + Send + Sync,
 {
-    fn do_draw(&self, data: &TestCaseData) -> T {
-        data.generate_from_schema(&self.build_schema())
+    fn do_draw(&self, tc: &TestCase) -> T {
+        super::generate_from_schema(tc, &self.build_schema())
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, T>> {

@@ -1,4 +1,4 @@
-use super::{BasicGenerator, Generate, TestCaseData};
+use super::{BasicGenerator, Generate, TestCase};
 use crate::cbor_utils::cbor_map;
 use ciborium::Value;
 
@@ -11,7 +11,7 @@ pub struct JustGenerator<T> {
 }
 
 impl<T: Clone + Send + Sync> Generate<T> for JustGenerator<T> {
-    fn do_draw(&self, _data: &TestCaseData) -> T {
+    fn do_draw(&self, _tc: &TestCase) -> T {
         self.value.clone()
     }
 
@@ -33,7 +33,7 @@ pub struct NoneGenerator<T> {
 }
 
 impl<T: Send + Sync> Generate<Option<T>> for NoneGenerator<T> {
-    fn do_draw(&self, _data: &TestCaseData) -> Option<T> {
+    fn do_draw(&self, _tc: &TestCase) -> Option<T> {
         None
     }
 
@@ -54,8 +54,8 @@ pub fn none<T: Send + Sync>() -> NoneGenerator<T> {
 pub struct BoolGenerator;
 
 impl Generate<bool> for BoolGenerator {
-    fn do_draw(&self, data: &TestCaseData) -> bool {
-        data.generate_from_schema(&cbor_map! {"type" => "boolean"})
+    fn do_draw(&self, tc: &TestCase) -> bool {
+        super::generate_from_schema(tc, &cbor_map! {"type" => "boolean"})
     }
 
     fn as_basic(&self) -> Option<BasicGenerator<'_, bool>> {

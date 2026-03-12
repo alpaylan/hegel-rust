@@ -210,13 +210,13 @@
 //! Set verbosity to [`Verbosity::Debug`] to enable debug logging of requests/responses.
 
 pub(crate) mod cbor_utils;
-pub mod control;
+pub(crate) mod control;
 pub mod generators;
 pub(crate) mod protocol;
 pub(crate) mod runner;
 mod test_case;
 
-pub use control::{assume, currently_in_test_context, draw, note};
+pub use control::currently_in_test_context;
 pub use generators::Generate;
 pub use test_case::TestCase;
 
@@ -225,6 +225,8 @@ pub use test_case::TestCase;
 pub use ciborium;
 #[doc(hidden)]
 pub use paste;
+#[doc(hidden)]
+pub use test_case::{generate_from_schema, generate_raw};
 
 // re-export public api
 pub use hegel_derive::test;
