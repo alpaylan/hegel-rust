@@ -347,6 +347,7 @@ where
         self
     }
 
+    #[doc(hidden)]
     pub fn test_location(mut self, location: TestLocation) -> Self {
         self.test_location = Some(location);
         self
