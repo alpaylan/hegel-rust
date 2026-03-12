@@ -285,7 +285,7 @@ where
 /// use hegel::generators::{hashmaps, integers, text};
 /// use std::collections::HashMap;
 ///
-/// let map: HashMap<i32, String> = tc.draw(&hashmaps(integers(), text()));
+/// let map: HashMap<i32, String> = tc.draw(hashmaps(integers(), text()));
 /// ```
 pub fn hashmaps<KT, VT, K: Generator<KT>, V: Generator<VT>>(
     keys: K,

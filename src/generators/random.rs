@@ -76,7 +76,7 @@ impl RngCore for HegelRandom {
 ///
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
-///     let mut rng = tc.draw(&randoms());
+///     let mut rng = tc.draw(randoms());
 ///
 ///     let a: i32 = rng.random_range(1..=100);
 ///     let b: bool = rng.random();

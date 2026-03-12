@@ -32,12 +32,12 @@ pub trait DefaultGenerator: Sized {
 /// }
 ///
 /// #[hegel::test]
-/// fn my_test(tc: &hegel::TestCase) {
+/// fn my_test(tc: hegel::TestCase) {
 ///     // Generate with defaults
-///     let person: Person = tc.draw(&generators::from_type::<Person>());
+///     let person: Person = tc.draw(generators::from_type::<Person>());
 ///
 ///     // Customize field generators
-///     let person: Person = tc.draw(&generators::from_type::<Person>()
+///     let person: Person = tc.draw(generators::from_type::<Person>()
 ///         .with_age(generators::integers().min_value(0).max_value(120)));
 /// }
 /// ```
@@ -229,7 +229,7 @@ where
 ///     .with_name(generators::from_regex("[A-Z][a-z]+"))
 ///     .with_age(generators::integers::<u32>().min_value(0).max_value(120));
 ///
-/// let person: Person = tc.draw(&gen);
+/// let person: Person = tc.draw(gen);
 /// ```
 #[macro_export]
 macro_rules! derive_generator {

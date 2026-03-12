@@ -34,7 +34,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 /// fn generates_people(tc: hegel::TestCase) {
 ///     let gen = generators::from_type::<Person>()
 ///         .with_age(generators::integers::<u32>().min_value(0).max_value(120));
-///     let person: Person = tc.draw(&gen);
+///     let person: Person = tc.draw(gen);
 /// }
 /// ```
 ///
@@ -59,7 +59,7 @@ use syn::{parse_macro_input, Data, DeriveInput};
 ///                 .default_Active()
 ///                 .with_since(generators::text().max_size(20))
 ///         );
-///     let status: Status = tc.draw(&gen);
+///     let status: Status = tc.draw(gen);
 /// }
 /// ```
 #[proc_macro_derive(Generator)]
@@ -87,13 +87,13 @@ pub fn derive_generate(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
-///     let x: i32 = tc.draw(&generators::integers());
+///     let x: i32 = tc.draw(generators::integers());
 ///     assert!(x + 0 == x);
 /// }
 ///
 /// #[hegel::test(test_cases = 500)]
 /// fn my_configured_test(tc: hegel::TestCase) {
-///     let x: i32 = tc.draw(&generators::integers());
+///     let x: i32 = tc.draw(generators::integers());
 ///     assert!(x + 0 == x);
 /// }
 /// ```

@@ -7,8 +7,8 @@
 //!
 //! #[hegel::test]
 //! fn test_addition_commutative(tc: hegel::TestCase) {
-//!     let x = tc.draw(&generators::integers::<i32>());
-//!     let y = tc.draw(&generators::integers::<i32>());
+//!     let x = tc.draw(generators::integers::<i32>());
+//!     let y = tc.draw(generators::integers::<i32>());
 //!     assert_eq!(x + y, y + x);
 //! }
 //! ```
@@ -23,7 +23,7 @@
 //!
 //! #[hegel::test(test_cases = 500, verbosity = Verbosity::Verbose)]
 //! fn test_with_options(tc: hegel::TestCase) {
-//!     let n = tc.draw(&generators::integers::<i32>());
+//!     let n = tc.draw(generators::integers::<i32>());
 //!     assert!(n + 0 == n);
 //! }
 //! ```
@@ -40,9 +40,9 @@
 //!
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
-//!     let _: () = tc.draw(&generators::unit());
-//!     let b: bool = tc.draw(&generators::booleans());
-//!     let n: i32 = tc.draw(&generators::just(42));  // constant with schema
+//!     let _: () = tc.draw(generators::unit());
+//!     let b: bool = tc.draw(generators::booleans());
+//!     let n: i32 = tc.draw(generators::just(42));  // constant with schema
 //! }
 //! ```
 //!
@@ -54,12 +54,12 @@
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
 //!     // Integers - bounds default to type limits
-//!     let i: i32 = tc.draw(&generators::integers::<i32>());
-//!     let bounded: i32 = tc.draw(&generators::integers().min_value(0).max_value(100));
+//!     let i: i32 = tc.draw(generators::integers::<i32>());
+//!     let bounded: i32 = tc.draw(generators::integers().min_value(0).max_value(100));
 //!
 //!     // Floating point
-//!     let f: f64 = tc.draw(&generators::floats::<f64>());
-//!     let bounded: f64 = tc.draw(&generators::floats()
+//!     let f: f64 = tc.draw(generators::floats::<f64>());
+//!     let bounded: f64 = tc.draw(generators::floats()
 //!         .min_value(0.0)
 //!         .max_value(1.0)
 //!         .exclude_min()
@@ -74,17 +74,17 @@
 //!
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
-//!     let s: String = tc.draw(&generators::text());
-//!     let bounded: String = tc.draw(&generators::text().min_size(1).max_size(100));
+//!     let s: String = tc.draw(generators::text());
+//!     let bounded: String = tc.draw(generators::text().min_size(1).max_size(100));
 //!
 //!     // Regex patterns (auto-anchored)
-//!     let pattern: String = tc.draw(&generators::from_regex(r"[a-z]{3}-[0-9]{3}"));
+//!     let pattern: String = tc.draw(generators::from_regex(r"[a-z]{3}-[0-9]{3}"));
 //!
 //!     // Format strings
-//!     let email: String = tc.draw(&generators::emails());
-//!     let url: String = tc.draw(&generators::urls());
-//!     let ip: String = tc.draw(&generators::ip_addresses().v4());
-//!     let date: String = tc.draw(&generators::dates());  // YYYY-MM-DD
+//!     let email: String = tc.draw(generators::emails());
+//!     let url: String = tc.draw(generators::urls());
+//!     let ip: String = tc.draw(generators::ip_addresses().v4());
+//!     let date: String = tc.draw(generators::dates());  // YYYY-MM-DD
 //! }
 //! ```
 //!
@@ -96,9 +96,9 @@
 //!
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
-//!     let vec: Vec<i32> = tc.draw(&generators::vecs(generators::integers()).min_size(1));
-//!     let set: HashSet<i32> = tc.draw(&generators::hashsets(generators::integers()));
-//!     let map: HashMap<String, i32> = tc.draw(&generators::hashmaps(generators::text(), generators::integers()));
+//!     let vec: Vec<i32> = tc.draw(generators::vecs(generators::integers()).min_size(1));
+//!     let set: HashSet<i32> = tc.draw(generators::hashsets(generators::integers()));
+//!     let map: HashMap<String, i32> = tc.draw(generators::hashmaps(generators::text(), generators::integers()));
 //! }
 //! ```
 //!
@@ -110,16 +110,16 @@
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
 //!     // Sample from a fixed set
-//!     let color: &str = tc.draw(&generators::sampled_from(vec!["red", "green", "blue"]));
+//!     let color: &str = tc.draw(generators::sampled_from(vec!["red", "green", "blue"]));
 //!
 //!     // Choose from multiple generators
-//!     let n: i32 = tc.draw(&hegel::one_of!(
+//!     let n: i32 = tc.draw(hegel::one_of!(
 //!         generators::integers::<i32>().min_value(0).max_value(10),
 //!         generators::integers::<i32>().min_value(100).max_value(110),
 //!     ));
 //!
 //!     // Optional values
-//!     let opt: Option<i32> = tc.draw(&generators::optional(generators::integers()));
+//!     let opt: Option<i32> = tc.draw(generators::optional(generators::integers()));
 //! }
 //! ```
 //!
@@ -131,17 +131,17 @@
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
 //!     // Transform values
-//!     let squared: i32 = tc.draw(&generators::integers::<i32>()
+//!     let squared: i32 = tc.draw(generators::integers::<i32>()
 //!         .min_value(1)
 //!         .max_value(10)
 //!         .map(|x| x * x));
 //!
 //!     // Filter values
-//!     let even: i32 = tc.draw(&generators::integers::<i32>()
+//!     let even: i32 = tc.draw(generators::integers::<i32>()
 //!         .filter(|x| x % 2 == 0));
 //!
 //!     // Dependent generation
-//!     let sized: String = tc.draw(&generators::integers::<usize>()
+//!     let sized: String = tc.draw(generators::integers::<usize>()
 //!         .min_value(1)
 //!         .max_value(10)
 //!         .flat_map(|len| generators::text().min_size(len).max_size(len)));
@@ -166,10 +166,10 @@
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
 //!     // Generate with defaults
-//!     let person: Person = tc.draw(&generators::from_type::<Person>());
+//!     let person: Person = tc.draw(generators::from_type::<Person>());
 //!
 //!     // Customize field generators
-//!     let person: Person = tc.draw(&generators::from_type::<Person>()
+//!     let person: Person = tc.draw(generators::from_type::<Person>()
 //!         .with_age(generators::integers().min_value(0).max_value(120)));
 //! }
 //! ```
@@ -182,7 +182,7 @@
 //!
 //! derive_generator!(Point { x: f64, y: f64 });
 //!
-//! let point: Point = tc.draw(&generators::from_type::<Point>());
+//! let point: Point = tc.draw(generators::from_type::<Point>());
 //! ```
 //!
 //! # Assumptions
@@ -194,7 +194,7 @@
 //!
 //! #[hegel::test]
 //! fn my_test(tc: hegel::TestCase) {
-//!     let age: u32 = tc.draw(&generators::integers());
+//!     let age: u32 = tc.draw(generators::integers());
 //!     tc.assume(age >= 18);
 //!     // Test logic for adults only...
 //! }

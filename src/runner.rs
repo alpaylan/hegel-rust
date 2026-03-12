@@ -283,7 +283,7 @@ impl Verbosity {
 ///
 /// #[hegel::test]
 /// fn test_identity(tc: hegel::TestCase) {
-///     let n = tc.draw(&generators::integers::<i32>());
+///     let n = tc.draw(generators::integers::<i32>());
 ///     assert!(n + 0 == n); // Identity property
 /// }
 /// ```
@@ -307,7 +307,7 @@ where
 ///
 /// #[hegel::test(test_cases = 500, verbosity = Verbosity::Verbose)]
 /// fn test_with_options(tc: hegel::TestCase) {
-///     let n = tc.draw(&generators::integers::<i32>());
+///     let n = tc.draw(generators::integers::<i32>());
 ///     assert!(n + 0 == n);
 /// }
 /// ```
