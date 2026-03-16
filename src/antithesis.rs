@@ -1,4 +1,5 @@
 use std::fs::OpenOptions;
+use std::fs::create_dir;
 use std::fs::exists;
 use std::io::Write;
 
@@ -10,8 +11,16 @@ pub struct TestLocation {
 }
 
 pub(crate) fn is_running_in_antithesis() -> bool {
-    let output_dir = std::env::var("ANTITHESIS_OUTPUT_DIR");
-    output_dir.is_ok() && exists(output_dir.unwrap()).is_ok()
+    match std::env::var("ANTITHESIS_OUTPUT_DIR") {
+        Ok(output_dir) => {
+            if !exists(&output_dir).is_ok() {
+                eprintln!("$ANTITHESIS_OUTPUT_DIR not found, creating...");
+                create_dir(output_dir).expect("Could not create directory");
+            }
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 pub(crate) fn emit_assertion(location: &TestLocation, passed: bool) {

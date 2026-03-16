@@ -17,7 +17,8 @@ fn my_test(tc: hegel::TestCase) {
 }
 "#;
 
-    let output = TempRustProject::new_test(code)
+    let output = TempRustProject::new()
+        .test_file(code)
         .env("ANTITHESIS_OUTPUT_DIR", &output_path)
         .run();
 
@@ -82,7 +83,7 @@ fn my_test(tc: hegel::TestCase) {
 }
 "#;
 
-    let output = TempRustProject::new_test(code).run();
+    let output = TempRustProject::new().test_file(code).run();
 
     assert!(
         output.status.success(),

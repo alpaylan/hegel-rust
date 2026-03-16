@@ -5,16 +5,12 @@ use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use tempfile::TempDir;
 
-enum ProjectMode {
-    Binary,
-    Test,
-}
-
 pub struct TempRustProject {
     _temp_dir: TempDir,
     project_path: PathBuf,
     env_vars: Vec<(String, String)>,
-    mode: ProjectMode,
+    has_main: bool,
+    has_tests: bool,
 }
 
 pub struct RunOutput {
@@ -25,17 +21,7 @@ pub struct RunOutput {
 }
 
 impl TempRustProject {
-    /// Create a temp project with `src/main.rs` (run via `cargo run`).
-    pub fn new(main_rs: &str) -> Self {
-        Self::create(main_rs, ProjectMode::Binary)
-    }
-
-    /// Create a temp project with an integration test file (run via `cargo test`).
-    pub fn new_test(test_rs: &str) -> Self {
-        Self::create(test_rs, ProjectMode::Test)
-    }
-
-    fn create(code: &str, mode: ProjectMode) -> Self {
+    pub fn new() -> Self {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let project_path = temp_dir.path().to_path_buf();
 
@@ -64,25 +50,30 @@ hegel = {{ path = "{}" }}
                 .expect("Failed to copy Cargo.lock");
         }
 
-        match mode {
-            ProjectMode::Binary => {
-                let src_dir = project_path.join("src");
-                std::fs::create_dir(&src_dir).expect("Failed to create src directory");
-                std::fs::write(src_dir.join("main.rs"), code).expect("Failed to write main.rs");
-            }
-            ProjectMode::Test => {
-                let tests_dir = project_path.join("tests");
-                std::fs::create_dir(&tests_dir).expect("Failed to create tests directory");
-                std::fs::write(tests_dir.join("test.rs"), code).expect("Failed to write test.rs");
-            }
-        }
-
         Self {
             _temp_dir: temp_dir,
             project_path,
             env_vars: Vec::new(),
-            mode,
+            has_main: false,
+            has_tests: false,
         }
+    }
+
+    pub fn main_file(mut self, code: &str) -> Self {
+        assert!(!self.has_main, "main_file can only be called once");
+        let src_dir = self.project_path.join("src");
+        std::fs::create_dir_all(&src_dir).expect("Failed to create src directory");
+        std::fs::write(src_dir.join("main.rs"), code).expect("Failed to write main.rs");
+        self.has_main = true;
+        self
+    }
+
+    pub fn test_file(mut self, code: &str) -> Self {
+        let tests_dir = self.project_path.join("tests");
+        std::fs::create_dir_all(&tests_dir).expect("Failed to create tests directory");
+        std::fs::write(tests_dir.join("test.rs"), code).expect("Failed to write test.rs");
+        self.has_tests = true;
+        self
     }
 
     pub fn env(mut self, key: &str, value: &str) -> Self {
@@ -91,15 +82,17 @@ hegel = {{ path = "{}" }}
     }
 
     pub fn run(self) -> RunOutput {
+        assert!(
+            self.has_main || self.has_tests,
+            "TempRustProject needs at least a main_file or test_file"
+        );
+
         let mut cmd = Command::new(env!("CARGO"));
 
-        match self.mode {
-            ProjectMode::Binary => {
-                cmd.args(["run", "--quiet"]);
-            }
-            ProjectMode::Test => {
-                cmd.args(["test", "--quiet"]);
-            }
+        if self.has_tests {
+            cmd.args(["test", "--quiet"]);
+        } else {
+            cmd.args(["run", "--quiet"]);
         }
 
         cmd.current_dir(&self.project_path);
