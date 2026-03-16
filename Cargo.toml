@@ -4,10 +4,13 @@ version = "0.1.0"
 edition = "2021"
 # if you bump this, also bump ci.yml and hegel-derive/cargo.toml
 rust-version = "1.86"
-description = "Property-based testing library for the Hegel test data generator"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/hegeldev/hegel-rust"
+homepage = "http://hegel.dev"
+description = "Property-based testing for Rust, built on Hypothesis"
+keywords = ["testing", "fuzzing", "property-based-testing"]
+categories = ["development-tools::testing"]
 
 [lib]
 name = "hegel"
