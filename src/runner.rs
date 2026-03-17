@@ -267,6 +267,27 @@ pub enum HealthCheck {
 }
 
 impl HealthCheck {
+    /// Returns all health check variants.
+    ///
+    /// Useful for suppressing all health checks at once:
+    ///
+    /// ```no_run
+    /// use hegel::HealthCheck;
+    ///
+    /// #[hegel::test(suppress_health_check = HealthCheck::all())]
+    /// fn my_test(tc: hegel::TestCase) {
+    ///     // ...
+    /// }
+    /// ```
+    pub const fn all() -> [HealthCheck; 4] {
+        [
+            HealthCheck::FilterTooMuch,
+            HealthCheck::TooSlow,
+            HealthCheck::DataTooLarge,
+            HealthCheck::LargeBaseExample,
+        ]
+    }
+
     fn as_str(&self) -> &'static str {
         match self {
             HealthCheck::FilterTooMuch => "filter_too_much",
