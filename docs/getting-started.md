@@ -59,11 +59,14 @@ fn test_bounded_integers_always_below_50(tc: TestCase) {
 ```
 
 Run the test again. It should now pass.
-```rust
 
-## Define your own generators
+## Using generators
 
-Hegel provides some generators that you can use out of the box.
+Hegel provides some generators that you can use out of the box, such as `integers`, `floats`, and `strings`.
+
+<!-- TODO: think about combinators some more -->
+
+You can also define custom generators with the `compose` macro.
 
 For example, say we have a `Person` structure that we want to generate:
 ```rust
@@ -73,264 +76,53 @@ struct Person {
 }
 ```
 
-We can define a custom generator with `compose`:
+You can use `compose` to create a `Person` generator:
 
 
 ```rust
 fn generate_person() {
-    hegel::compose!(|tc| {
-        Person {
-            age: tc.draw(integers::<i32>()),
-            name: tc.draw(strings()),
-        }
+    hegel::compose!(|tc: TestCase| {
+        let age = tc.draw(integers::<i32>());
+        let name = tc.draw(strings()); 
+        Person { age, name };
     })
 }
 ```
 
+You can make calls to `draw` in sequence that use the results of previous `draw`s:
+
+<!-- TODO: find + diff style. include the struct -->
+
 ```rust
-fn test_sort_preserves_length(tc: TestCase) {
-    let mut vector = draw(&vecs(&integers::<i32>()));
-    let initial_length = vector.len();
-    vector.sort();
-    let sorted_length = vector.len();
-    assert_eq!(initial_length, sorted_length);
+fn generate_person() {
+    hegel::compose!(|tc: TestCase| {
+        let age = tc.draw(integers::<i32>());
+        let name = tc.draw(strings()); 
+        let driving_license = if (age >= 18) {
+            tc.draw(booleans())
+        } else {
+            false
+        };
+        Person { age, name, driving_license };
+    })
 }
 ```
 
+## Automatically building generators for types
+
+If you don't need custom logic in your generators, as in the first `Person` example above, you can use the `derive` attribute to create a generator automatically:
 
 ```rust
-fn test_generator_composition(tc: TestCase) {
-    let (x, y) = tc.draw(hegel::compose!(|tc| {
-        let x = tc.draw(integers::<i32>().min_value(0).max_value(50));
-        let y = tc.draw(integers::<i32>().min_value(x).max_value(100));
-        (x, y)
-    }));
-    assert!(x <= 50);
-    assert!(y >= 50 && y <= 100);
-}
-```
-
-## Filtering
-
-Use `.filter()` for simple conditions on a generator:
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn test_even_integers(tc: hegel::TestCase) {
-    let n = tc.draw(generators::integers::<i64>()
-        .filter(|x| x % 2 == 0));
-    assert!(n % 2 == 0);
-}
-```
-
-When the constraint spans multiple values, use `tc.assume()` inside the
-test body:
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn test_division(tc: hegel::TestCase) {
-    let n1 = tc.draw(generators::integers::<i64>());
-    let n2 = tc.draw(generators::integers::<i64>());
-    tc.assume(n2 != 0);
-    // n2 is guaranteed non-zero here
-    let q = n1 / n2;
-    let r = n1 % n2;
-    assert_eq!(n1, q * n2 + r);
-}
-```
-
-Using bounds and `.map()` is more efficient than `.filter()` or `tc.assume()`
-because they avoid generating values that will be rejected.
-
-## Transforming generated values
-
-Use `.map()` to transform values after generation:
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn test_string_integers(tc: hegel::TestCase) {
-    let s = tc.draw(generators::integers::<i32>()
-        .min_value(0).max_value(100)
-        .map(|n| n.to_string()));
-    assert!(s.parse::<i32>().unwrap() >= 0);
-}
-```
-
-## Dependent generation
-
-Because generation is imperative in Hegel, you can use earlier results to
-configure later generators directly:
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn test_list_with_valid_index(tc: hegel::TestCase) {
-    let n = tc.draw(generators::integers::<usize>()
-        .min_value(1).max_value(10));
-    let lst: Vec<i32> = tc.draw(generators::vecs(generators::integers())
-        .min_size(n).max_size(n));
-    let index = tc.draw(generators::integers::<usize>()
-        .min_value(0).max_value(n - 1));
-    assert!(index < lst.len());
-}
-```
-
-You can also use `.flat_map()` for dependent generation within a single
-generator expression:
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn test_flatmap_example(tc: hegel::TestCase) {
-    let (n, lst) = tc.draw(generators::integers::<usize>()
-        .min_value(1).max_value(5)
-        .flat_map(|n| {
-            generators::vecs(generators::integers::<i32>())
-                .min_size(n).max_size(n)
-                .map(move |lst| (n, lst))
-        }));
-    assert_eq!(lst.len(), n);
-}
-```
-
-## What you can generate
-
-### Primitive types
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn my_test(tc: hegel::TestCase) {
-    let b: bool = tc.draw(generators::booleans());
-    let n: i32 = tc.draw(generators::integers::<i32>());    // also i8-i64, u8-u64, usize
-    let f: f64 = tc.draw(generators::floats::<f64>());      // also f32
-    let s: String = tc.draw(generators::text());
-    let bytes: Vec<u8> = tc.draw(generators::binary());
-}
-```
-
-All numeric generators support `.min_value()` and `.max_value()`. Floats also
-support `.exclude_min()`, `.exclude_max()`, `.allow_nan(bool)`, and
-`.allow_infinity(bool)`. Text and binary accept `.min_size()`/`.max_size()`.
-
-### Constants and choices
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn my_test(tc: hegel::TestCase) {
-    let always_42 = tc.draw(generators::just(42));
-    let suit = tc.draw(generators::sampled_from(vec!["hearts", "diamonds", "clubs", "spades"]));
-}
-```
-
-### Collections
-
-```rust
-use hegel::generators::{self, Generator};
-use std::collections::{HashSet, HashMap};
-
-#[hegel::test]
-fn my_test(tc: hegel::TestCase) {
-    let v: Vec<i32> = tc.draw(generators::vecs(generators::integers())
-        .min_size(1).max_size(10));
-    let s: HashSet<i32> = tc.draw(generators::hashsets(generators::integers())
-        .max_size(5));
-    let m: HashMap<String, i32> = tc.draw(generators::hashmaps(
-        generators::text().max_size(10), generators::integers(),
-    ).max_size(5));
-}
-```
-
-### Combinators
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn my_test(tc: hegel::TestCase) {
-    let pair: (i32, String) = tc.draw(generators::tuples2(
-        generators::integers(), generators::text(),
-    ));
-    let triple: (bool, i32, f64) = tc.draw(generators::tuples3(
-        generators::booleans(), generators::integers(), generators::floats(),
-    ));
-    let maybe: Option<i32> = tc.draw(generators::optional(generators::integers()));
-
-    // Choose between generators (type-erased via one_of! macro)
-    let n: i32 = tc.draw(hegel::one_of!(
-        generators::just(0),
-        generators::integers::<i32>().min_value(1).max_value(100),
-        generators::integers::<i32>().min_value(-100).max_value(-1),
-    ));
-}
-```
-
-### Formats and patterns
-
-```rust
-use hegel::generators::{self, Generator};
-
-#[hegel::test]
-fn my_test(tc: hegel::TestCase) {
-    let email: String = tc.draw(generators::emails());
-    let url: String = tc.draw(generators::urls());
-    let domain: String = tc.draw(generators::domains().with_max_length(50));
-    let date: String = tc.draw(generators::dates());     // YYYY-MM-DD
-    let time: String = tc.draw(generators::times());      // HH:MM:SS
-    let dt: String = tc.draw(generators::datetimes());
-    let ipv4: String = tc.draw(generators::ip_addresses().v4());
-    let ipv6: String = tc.draw(generators::ip_addresses().v6());
-    let pattern: String = tc.draw(generators::from_regex(r"[A-Z]{2}-[0-9]{4}").fullmatch());
-}
-```
-
-## Type-directed derivation
-
-`#[derive(Generator)]` creates a builder struct named `<Type>Generator` with
-`.new()` and `.with_<field>()` methods:
-
-```rust
-use hegel::Generator;
-use hegel::generators::{self, Generator as _};
-
 #[derive(Generator, Debug)]
-struct User { name: String, age: u32, active: bool }
-
-#[hegel::test]
-fn test_derived_user(tc: hegel::TestCase) {
-    let user: User = tc.draw(UserGenerator::new()
-        .with_age(generators::integers().min_value(18).max_value(120))
-        .with_name(generators::from_regex(r"[A-Z][a-z]{2,15}").fullmatch()));
-    assert!(user.age >= 18 && user.age <= 120);
+struct Person {
+    name: String,
+    age: u32,
 }
 ```
 
-For external types, use `derive_generator!` to generate the same builder:
+## Debug your failing test cases
 
-```rust
-use hegel::{derive_generator};
-use hegel::generators::{self, Generator};
-
-struct Point { x: f64, y: f64 }
-derive_generator!(Point { x: f64, y: f64 });
-// Now tc.draw(PointGenerator::new().with_x(...).with_y(...)) works
-```
-
-## Debugging with note()
-
-Use `tc.note()` to attach debug information. Notes only appear when Hegel
-replays the minimal failing example:
+Use the `note` method to attach debug information: 
 
 ```rust
 use hegel::generators::{self, Generator};
@@ -344,8 +136,11 @@ fn test_with_notes(tc: hegel::TestCase) {
 }
 ```
 
-## Controlling the number of test cases
-By default Hegel runs 100 test cases. Use the builder API to override this:
+Notes only appear when Hegel replays the minimal failing example.
+
+## Change the number of test cases
+
+By default Hegel runs 100 test cases. To override this, pass the `test_cases` argument to the `test` attribute:
 
 ```rust
 use hegel::generators::{self, Generator};
@@ -356,7 +151,6 @@ fn test_integers_many(tc: hegel::TestCase) {
     assert_eq!(n, n);
 }
 ```
-
 
 ## Guiding generation with target()
 
@@ -370,3 +164,5 @@ fn test_integers_many(tc: hegel::TestCase) {
 - Run `just docs` to build and browse the full API documentation locally.
 - Look at `tests/` for more usage patterns.
 - Combine `#[derive(Generator)]` with `.with_<field>()` to generate realistic domain objects.
+
+<!-- TODO: ending -->
