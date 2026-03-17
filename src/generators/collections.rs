@@ -360,7 +360,7 @@ impl Generator<Value> for FixedDictGenerator<'_> {
             let entries: Vec<(Value, Value)> = self
                 .fields
                 .iter()
-                .map(|(name, generator)| (Value::Text(name.clone()), generator.do_draw(tc)))
+                .map(|(name, g)| (Value::Text(name.clone()), g.do_draw(tc)))
                 .collect();
             tc.stop_span(false);
             Value::Map(entries)
@@ -371,7 +371,7 @@ impl Generator<Value> for FixedDictGenerator<'_> {
         let basics: Vec<BasicGenerator<'_, Value>> = self
             .fields
             .iter()
-            .map(|(_, generator)| generator.as_basic())
+            .map(|(_, g)| g.as_basic())
             .collect::<Option<Vec<_>>>()?;
 
         let schemas: Vec<Value> = basics.iter().map(|b| b.schema().clone()).collect();

@@ -151,8 +151,8 @@ fn test_one_of_mapped_references(tc: TestCase) {
 fn test_boxed_generator_with_references(tc: TestCase) {
     let options = [10, 20, 30];
     let refs: Vec<&i32> = options.iter().collect();
-    let generator = generators::sampled_from(refs).boxed();
-    let value: &i32 = tc.draw(generator);
+    let g = generators::sampled_from(refs).boxed();
+    let value: &i32 = tc.draw(g);
     assert!(options.contains(value));
 }
 

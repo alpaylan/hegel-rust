@@ -28,14 +28,14 @@ fn main() {
     });
 
     Hegel::new(move |tc| {
-        let mut generator = generators::integers::<i32>();
+        let mut g = generators::integers::<i32>();
         if let Some(min) = params.min_value {
-            generator = generator.min_value(min);
+            g = g.min_value(min);
         }
         if let Some(max) = params.max_value {
-            generator = generator.max_value(max);
+            g = g.max_value(max);
         }
-        let value = tc.draw(generator);
+        let value = tc.draw(g);
         write(&Metrics { value });
     })
     .test_cases(get_test_cases())

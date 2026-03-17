@@ -28,11 +28,11 @@ fn main() {
     });
 
     Hegel::new(move |tc| {
-        let mut generator = generators::binary().min_size(params.min_size);
+        let mut g = generators::binary().min_size(params.min_size);
         if let Some(max) = params.max_size {
-            generator = generator.max_size(max);
+            g = g.max_size(max);
         }
-        let value = tc.draw(generator);
+        let value = tc.draw(g);
         write(&Metrics {
             length: value.len(),
         });

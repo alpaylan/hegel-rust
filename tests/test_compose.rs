@@ -47,10 +47,10 @@ fn test_compose_with_filter(tc: TestCase) {
 
 #[hegel::test]
 fn test_compose_with_boxed(tc: TestCase) {
-    let generator =
+    let g =
         hegel::compose!(|tc| { tc.draw(generators::integers::<i32>().min_value(0).max_value(50)) })
             .boxed();
-    let value = tc.draw(generator);
+    let value = tc.draw(g);
     assert!((0..=50).contains(&value));
 }
 

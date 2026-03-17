@@ -34,28 +34,28 @@ fn main() {
     });
 
     Hegel::new(move |tc| {
-        let mut generator = generators::floats::<f64>();
+        let mut g = generators::floats::<f64>();
 
         if let Some(min) = params.min_value {
-            generator = generator.min_value(min);
+            g = g.min_value(min);
         }
         if let Some(max) = params.max_value {
-            generator = generator.max_value(max);
+            g = g.max_value(max);
         }
         if params.exclude_min {
-            generator = generator.exclude_min();
+            g = g.exclude_min();
         }
         if params.exclude_max {
-            generator = generator.exclude_max();
+            g = g.exclude_max();
         }
         if let Some(allow_nan) = params.allow_nan {
-            generator = generator.allow_nan(allow_nan);
+            g = g.allow_nan(allow_nan);
         }
         if let Some(allow_infinity) = params.allow_infinity {
-            generator = generator.allow_infinity(allow_infinity);
+            g = g.allow_infinity(allow_infinity);
         }
 
-        let value = tc.draw(generator);
+        let value = tc.draw(g);
         write(&Metrics {
             value,
             is_nan: value.is_nan(),
