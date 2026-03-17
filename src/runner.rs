@@ -262,6 +262,8 @@ pub enum HealthCheck {
     TooSlow,
     /// Generated data is too large.
     DataTooLarge,
+    /// The smallest natural input is very large.
+    LargeBaseExample,
 }
 
 impl HealthCheck {
@@ -270,6 +272,7 @@ impl HealthCheck {
             HealthCheck::FilterTooMuch => "filter_too_much",
             HealthCheck::TooSlow => "too_slow",
             HealthCheck::DataTooLarge => "data_too_large",
+            HealthCheck::LargeBaseExample => "large_base_example",
         }
     }
 }
