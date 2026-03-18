@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6 - 2026-03-18
+
+This release adds client-side support for reporting flaky test errors to the end user.
+
 ## 0.1.5 - 2026-03-18
 
 This release updates the hegel-core version to support the new health checks feature.
