@@ -68,8 +68,11 @@ Hegel provides a rich library of generators that you can use out of the box. The
 For example, here's how you might generate a list of integers:
 
 ```rust
+use hegel::generators::vecs;
+
+#[hegel::test]
 fn test_append_increases_length(tc: TestCase) {
-    let vector = vecs(integers::<i32>());
+    let mut vector = tc.draw(vecs(integers::<i32>()));
     let initial_length = vector.len();
     vector.push(tc.draw(integers::<i32>()));
     assert!(vector.len() > initial_length);
@@ -84,6 +87,7 @@ You can also define custom generators with the `compose` macro.
 For example, say you have a `Person` struct that we want to generate:
 
 ```rust
+#[derive(Debug)]
 struct Person {
     age: i32,
     name: String,
