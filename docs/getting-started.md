@@ -173,23 +173,9 @@ fn test_integers_many(tc: hegel::TestCase) {
 }
 ```
 
-## Guiding generation with target()
-
-> `target()` is not yet available in Hegel for Rust. In other Hegel libraries,
-> `target(value, label)` guides the generator toward higher values of a
-> numeric metric, useful for finding worst-case inputs. It is planned for
-> a future release.
-
 ## Next steps
 
 - Run `just docs` to build and browse the full API documentation locally.
 - Look at `tests/` for more usage patterns.
-- Combine `#[derive(Generator)]` with `.with_<field>()` to generate realistic domain objects.
-
-<!-- TODO: ending -->
-
-<!-- ## Further reading -->
-
-<!-- To learn more about Hegel for Rust, see ... (what?) -->
-
-<!-- https://crates.io/crates/hegeltest - link to docs page -->
+<!-- - Combine `#[derive(Generator)]` with `.with_<field>()` to generate realistic domain objects. -->
+- See our [API docs](https://crates.io/crates/hegeltest).
