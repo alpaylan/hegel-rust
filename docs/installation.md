@@ -6,7 +6,7 @@ Add Hegel to your `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
-hegeltest = "0.1.0"
+hegeltest = "0.1.8"
 ```
 
 Hegel for Rust requires a Python-based server component (`hegel-core`) to
@@ -28,7 +28,7 @@ pip install uv
 ```
 
 See the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/)
-for more options including Windows.
+for more options.
 
 Once `uv` is on your PATH, Hegel will automatically install the correct
 version of `hegel-core` into a local `.hegel/venv/` directory the first time
@@ -63,12 +63,13 @@ When automatic installation fails, Hegel writes detailed output to
 `.hegel/install.log` in your project directory. Check this file for
 pip/uv errors.
 
-### Version mismatches
+### Version mismatches and other problems
 
-If you get protocol version errors, try removing `.hegel/venv/` to force
-a fresh install:
+If run into problems (e.g. protocol mismatches) try removing `.hegel/venv/` to force a fresh install:
 
 ```bash
 rm -rf .hegel/venv
 cargo test
 ```
+
+This shouldn't ever be necessary, so if it is please let us know that you're running into problems by [filing an issue](https://github.com/hegeldev/hegel-rust/issues).
