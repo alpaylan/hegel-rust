@@ -132,19 +132,6 @@ fn generate_person(tc: TestCase) -> Person {
     Person { age, name, driving_license }
 ```
 
-<!-- TODO: fix this section -->
-<!-- ## Automatically build generators for types
-
-If you want a generator with no custom logic, as in the first `Person` example above, you can use the `derive` attribute to create a generator automatically:
-
-```rust
-#[derive(Generator, Debug)]
-struct Person {
-    name: String,
-    age: u32,
-}
-``` -->
-
 ## Debug your failing test cases
 
 Use the `note` method to attach debug information: 
