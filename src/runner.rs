@@ -1,5 +1,5 @@
 use crate::control::{currently_in_test_context, set_in_test_context};
-use crate::protocol::{Channel, Connection, HANDSHAKE_STRING};
+use crate::protocol::{Channel, Connection, HANDSHAKE_STRING, SERVER_CRASHED_MESSAGE};
 use crate::test_case::{ASSUME_FAIL_STRING, TestCase};
 use ciborium::Value;
 
@@ -621,10 +621,7 @@ where
                     );
 
                     if connection.server_has_exited() {
-                        panic!(
-                            "The hegel server process exited unexpectedly. \
-                             See .hegel/server.log for diagnostic information."
-                        );
+                        panic!("{}", SERVER_CRASHED_MESSAGE);
                     }
                 }
                 "test_done" => {

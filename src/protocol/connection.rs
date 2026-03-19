@@ -54,8 +54,7 @@ impl Connection {
     fn server_crashed_error() -> std::io::Error {
         std::io::Error::new(
             std::io::ErrorKind::ConnectionAborted,
-            "The hegel server process exited unexpectedly. \
-             See .hegel/server.log for diagnostic information.",
+            super::SERVER_CRASHED_MESSAGE,
         )
     }
 
