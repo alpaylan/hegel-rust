@@ -9,6 +9,14 @@ use hegel::{Hegel, Settings};
 use regex::Regex;
 use std::fmt::Debug;
 
+pub fn assert_matches_regex(text: &str, pattern: &str) {
+    let re = Regex::new(pattern).unwrap_or_else(|e| panic!("invalid regex {pattern:?}: {e}"));
+    assert!(
+        re.is_match(text),
+        "Expected to match pattern: {pattern}\nActual:\n{text}"
+    );
+}
+
 /// Run `f` and assert it panics with a message matching the `pattern` regex.
 pub fn expect_panic<F: FnOnce() + UnwindSafe>(f: F, pattern: &str) {
     let err = catch_unwind(f).expect_err("expected panic, but closure returned normally");
@@ -17,11 +25,7 @@ pub fn expect_panic<F: FnOnce() + UnwindSafe>(f: F, pattern: &str) {
         .map(|s| s.to_string())
         .or_else(|| err.downcast_ref::<String>().cloned())
         .unwrap_or_default();
-    let re = Regex::new(pattern).unwrap_or_else(|e| panic!("invalid regex {pattern:?}: {e}"));
-    assert!(
-        re.is_match(&msg),
-        "panic message did not match pattern {pattern:?}\n  got: {msg}"
-    );
+    assert_matches_regex(&msg, pattern);
 }
 
 #[allow(dead_code)]

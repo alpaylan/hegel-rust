@@ -23,12 +23,6 @@ fn my_test(tc: hegel::TestCase) {
         .env("ANTITHESIS_OUTPUT_DIR", &output_path)
         .cargo_test(&[]);
 
-    assert!(
-        output.status.success(),
-        "Subprocess failed: {}",
-        output.stderr
-    );
-
     let jsonl_path = output_dir.path().join("sdk.jsonl");
     assert!(jsonl_path.exists());
 
@@ -95,16 +89,9 @@ fn my_test(tc: hegel::TestCase) {
 }
 "#;
 
-    let output = TempRustProject::new()
+    TempRustProject::new()
         .test_file("test.rs", code)
         .env("ANTITHESIS_OUTPUT_DIR", &output_path)
+        .expect_failure("antithesis")
         .cargo_test(&[]);
-
-    assert!(!output.status.success());
-    assert!(
-        output.stdout.contains("antithesis"),
-        "\nstderr: {}\nstdout: {}",
-        output.stderr,
-        output.stdout
-    );
 }

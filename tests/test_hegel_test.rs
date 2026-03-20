@@ -67,13 +67,10 @@ use hegel::generators;
 #[test]
 fn main(tc: hegel::TestCase) {}
 "#;
-    let output = TempRustProject::new().main_file(code).cargo_run(&[]);
-    assert!(!output.status.success());
-    assert!(
-        output.stderr.contains("Remove the #[test] attribute"),
-        "Expected duplicate test error, got: {}",
-        output.stderr
-    );
+    TempRustProject::new()
+        .main_file(code)
+        .expect_failure("Remove the #\\[test\\] attribute")
+        .cargo_run(&[]);
 }
 
 #[test]
@@ -86,15 +83,10 @@ use hegel::generators;
 fn main() {
 }
 "#;
-    let output = TempRustProject::new().main_file(code_zero).cargo_run(&[]);
-    assert!(!output.status.success());
-    assert!(
-        output
-            .stderr
-            .contains("must take exactly one parameter of type hegel::TestCase"),
-        "Expected parameter error for zero params, got: {}",
-        output.stderr
-    );
+    TempRustProject::new()
+        .main_file(code_zero)
+        .expect_failure("must take exactly one parameter of type hegel::TestCase")
+        .cargo_run(&[]);
 
     // Two parameters should be rejected
     let code_two = r#"
@@ -105,13 +97,8 @@ fn main(tc: hegel::TestCase, x: bool) {
     let _ = (tc, x);
 }
 "#;
-    let output = TempRustProject::new().main_file(code_two).cargo_run(&[]);
-    assert!(!output.status.success());
-    assert!(
-        output
-            .stderr
-            .contains("must take exactly one parameter of type hegel::TestCase"),
-        "Expected parameter error for two params, got: {}",
-        output.stderr
-    );
+    TempRustProject::new()
+        .main_file(code_two)
+        .expect_failure("must take exactly one parameter of type hegel::TestCase")
+        .cargo_run(&[]);
 }

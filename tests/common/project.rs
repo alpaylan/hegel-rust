@@ -1,6 +1,7 @@
 // internal helper code
 #![allow(dead_code)]
 
+use super::utils::assert_matches_regex;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use tempfile::TempDir;
@@ -10,6 +11,7 @@ pub struct TempRustProject {
     project_path: PathBuf,
     env_vars: Vec<(String, String)>,
     features: Vec<String>,
+    expect_failure: Option<String>,
 }
 
 pub struct RunOutput {
@@ -39,6 +41,7 @@ impl TempRustProject {
             project_path,
             env_vars: Vec::new(),
             features: Vec::new(),
+            expect_failure: None,
         }
     }
 
@@ -63,6 +66,11 @@ impl TempRustProject {
 
     pub fn env(mut self, key: &str, value: &str) -> Self {
         self.env_vars.push((key.to_string(), value.to_string()));
+        self
+    }
+
+    pub fn expect_failure(mut self, pattern: &str) -> Self {
+        self.expect_failure = Some(pattern.to_string());
         self
     }
 
@@ -103,11 +111,34 @@ hegeltest = {{ path = "{path}"{features} }}
 
         let output = cmd.output().unwrap();
 
-        RunOutput {
+        let run_output = RunOutput {
             status: output.status,
             stdout: String::from_utf8_lossy(&output.stdout).trim().to_string(),
             stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        };
+
+        match &self.expect_failure {
+            None => {
+                assert!(
+                    run_output.status.success(),
+                    "Expected command to succeed.\nstdout:\n{}\nstderr:\n{}",
+                    run_output.stdout,
+                    run_output.stderr
+                );
+            }
+            Some(pattern) => {
+                assert!(
+                    !run_output.status.success(),
+                    "Expected command to fail.\nstdout:\n{}\nstderr:\n{}",
+                    run_output.stdout,
+                    run_output.stderr
+                );
+                let combined = format!("{}\n{}", run_output.stdout, run_output.stderr);
+                assert_matches_regex(&combined, pattern);
+            }
         }
+
+        run_output
     }
 
     pub fn cargo_run(&self, args: &[&str]) -> RunOutput {

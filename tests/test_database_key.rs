@@ -53,11 +53,11 @@ fn test_2(tc: hegel::TestCase) {{
     std::fs::create_dir_all(&values_path).unwrap();
     let project = TempRustProject::new()
         .test_file("integration.rs", &test_code)
-        .env("VALUES_DIR", values_path.to_str().unwrap());
+        .env("VALUES_DIR", values_path.to_str().unwrap())
+        .expect_failure("Property test failed");
 
     // run test_1. Database now has a failing entry for test_1
-    let output = project.cargo_test(&["test_1"]);
-    assert!(!output.status.success());
+    project.cargo_test(&["test_1"]);
 
     let shrunk_value = *read_values(&values_path, "test_1").last().unwrap();
     assert_eq!(shrunk_value, 1_000_000);
@@ -66,8 +66,7 @@ fn test_2(tc: hegel::TestCase) {{
     std::fs::remove_file(values_path.join("test_1")).unwrap();
 
     // run test_1 again. It should replay the shrunk test case immediately
-    let output = project.cargo_test(&["test_1"]);
-    assert!(!output.status.success());
+    project.cargo_test(&["test_1"]);
 
     let values = read_values(&values_path, "test_1");
     assert_eq!(
@@ -77,8 +76,7 @@ fn test_2(tc: hegel::TestCase) {{
     );
 
     // run test_2. It should not replay the test_1 shrunk test case.
-    let output = project.cargo_test(&["test_2"]);
-    assert!(!output.status.success());
+    project.cargo_test(&["test_2"]);
 
     let values = read_values(&values_path, "test_2");
     assert_ne!(values[0], shrunk_value);
