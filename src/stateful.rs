@@ -125,8 +125,10 @@ pub fn run(mut m: impl StateMachine, tc: TestCase) {
     let mut steps_run_successfully = 0;
     let mut steps_attempted = 0;
 
-    // TODO: compare with the condition in the reference SDK
-    while steps_run_successfully < step_cap && steps_attempted < 10 * step_cap {
+    while steps_run_successfully < step_cap
+        && (steps_attempted < 10 * step_cap
+            || (steps_run_successfully == 0 && steps_attempted < 1000))
+    {
         let rule = tc.draw(rules);
 
         // We only need this because AssertUnwindSafe expects a closure.
