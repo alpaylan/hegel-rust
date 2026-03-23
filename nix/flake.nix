@@ -26,16 +26,14 @@
         in
         {
           default = pkgs.mkShell {
-            inputsFrom = [ hegel.packages.${system}.default ];
-            buildInputs = [
+            packages = [
               pkgs.cargo
               pkgs.rustc
               pkgs.rustfmt
               pkgs.clippy
               pkgs.just
-              hegel.packages.${system}.default
             ];
-            HEGEL_SERVER_COMMAND = "${hegel.packages.${system}.default}/bin/hegel";
+            HEGEL_SERVER_COMMAND = pkgs.lib.getExe hegel.packages.${system}.default;
           };
         }
       );
