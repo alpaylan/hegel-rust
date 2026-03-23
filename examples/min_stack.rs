@@ -18,7 +18,7 @@ struct MinStack<T> {
 }
 
 impl<T: Copy + Ord> MinStack<T> {
-    fn new() -> MinStack<T> {
+    fn new() -> Self {
         MinStack {
             stack: Vec::new(),
             minimums: Vec::new(),

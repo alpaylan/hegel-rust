@@ -13,6 +13,12 @@ struct Ledger {
 }
 
 impl Ledger {
+    fn new() -> Self {
+        Ledger {
+            balances: HashMap::new(),
+        }
+    }
+
     fn credit(&mut self, account: String, amount: i64) {
         let balance = self.balances.entry(account).or_insert(0);
         *balance += amount;
@@ -29,12 +35,6 @@ impl Ledger {
         if from != to && amount - from_balance <= 1 {
             self.debit(from, amount);
             self.credit(to, amount);
-        }
-    }
-
-    fn new() -> Ledger {
-        Ledger {
-            balances: HashMap::new(),
         }
     }
 }
