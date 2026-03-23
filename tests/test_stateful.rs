@@ -79,7 +79,7 @@ impl TestConsumeMachine {
 #[hegel::test]
 fn test_consume(tc: TestCase) {
     let ints = integers::<i32>;
-    let elements = tc.draw(vecs(ints()).unique());
+    let elements = tc.draw(vecs(ints()).unique(true));
     tc.assume(!elements.is_empty());
     let mut bundle = variables(&tc);
     for element in elements.clone() {
