@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.13 - 2026-03-23
+
+Enable the `#![forbid(future_incompatible)]` and `#![cfg_attr(docsrs, feature(doc_cfg))]` attributes, the latter of which unblocks our docs.rs build.
+
 ## 0.1.12 - 2026-03-20
 
 This release improves derived default generators:
