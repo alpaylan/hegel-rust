@@ -8,13 +8,6 @@ pub struct RandomsGenerator {
 }
 
 impl RandomsGenerator {
-    /// Use true randomness instead of ArtificialRandom randomness.
-    ///
-    /// When enabled, a single seed is generated via Hypothesis, then all
-    /// subsequent random operations use a local `StdRng` seeded with that value.
-    ///
-    /// This is faster (no round-trips per operation) but shrinking only
-    /// affects the seed, not individual random values.
     pub fn use_true_random(mut self) -> Self {
         self.use_true_random = true;
         self

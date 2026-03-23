@@ -1,12 +1,16 @@
-use std::cell::Cell;
+use std::cell::RefCell;
+
+use crate::test_case::TestCase;
 
 thread_local! {
-    static IN_TEST_CONTEXT: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_TEST_CONTEXT: RefCell<Option<TestCase>> = const { RefCell::new(None) };
 }
 
-/// Mark whether we are currently inside a Hegel test context.
-pub(crate) fn set_in_test_context(value: bool) {
-    IN_TEST_CONTEXT.with(|c| c.set(value));
+pub(crate) fn with_test_context<R>(tc: &TestCase, f: impl FnOnce() -> R) -> R {
+    CURRENT_TEST_CONTEXT.with(|c| c.borrow_mut().replace(tc.clone()));
+    let result = f();
+    CURRENT_TEST_CONTEXT.with(|c| *c.borrow_mut() = None);
+    result
 }
 
 /// Returns `true` if we are currently inside a Hegel test context.
@@ -22,5 +26,5 @@ pub(crate) fn set_in_test_context(value: bool) {
 /// }
 /// ```
 pub fn currently_in_test_context() -> bool {
-    IN_TEST_CONTEXT.with(|c| c.get())
+    CURRENT_TEST_CONTEXT.with(|c| c.borrow().is_some())
 }

@@ -1,8 +1,7 @@
 use ciborium::Value;
 
-/// Build a `ciborium::Value::Map` from key-value pairs.
+/// Build a `ciborium::Value::Map`:
 ///
-/// # Example
 /// ```ignore
 /// let schema = cbor_map!{
 ///     "type" => "integer",
@@ -21,9 +20,8 @@ macro_rules! cbor_map {
     };
 }
 
-/// Build a `ciborium::Value::Array` from values.
+/// Build a `ciborium::Value::Array`:
 ///
-/// # Example
 /// ```ignore
 /// let elements = cbor_array![schema1, schema2];
 /// ```

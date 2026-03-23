@@ -82,23 +82,6 @@ impl<T: Integer + serde::de::DeserializeOwned + serde::Serialize + Send + Sync +
     }
 }
 
-/// Generate integer values.
-///
-/// The type parameter determines the integer type. Bounds are automatically
-/// derived from the type (e.g., `u8` uses 0-255). Use `with_min()` and
-/// `with_max()` to constrain the range further.
-///
-/// # Example
-///
-/// ```no_run
-/// use hegel::generators::{self, Generator};
-///
-/// // Generate any i32 (uses i32::MIN to i32::MAX)
-/// let generator = generators::integers::<i32>();
-///
-/// // Generate u8 in range 0-100
-/// let generator = generators::integers::<u8>().min_value(0).max_value(100);
-/// ```
 pub fn integers<
     T: Integer + serde::de::DeserializeOwned + serde::Serialize + Send + Sync + 'static,
 >() -> IntegerGenerator<T> {
@@ -216,10 +199,6 @@ impl<T: Float + serde::de::DeserializeOwned + serde::Serialize + Send + Sync + '
     }
 }
 
-/// Generate floating-point values.
-///
-/// By default, allows NaN and infinity values. Use `.allow_nan(false)` and
-/// `.allow_infinity(false)` to restrict to finite values.
 pub fn floats<T: Float + serde::de::DeserializeOwned + serde::Serialize + Send + Sync + 'static>()
 -> FloatGenerator<T> {
     FloatGenerator {

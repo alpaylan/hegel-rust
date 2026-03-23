@@ -34,7 +34,7 @@ fn test_vec_unique(tc: TestCase) {
     let vec: Vec<i32> = tc.draw(
         generators::vecs(generators::integers::<i32>())
             .max_size(max_size)
-            .unique(),
+            .unique(true),
     );
 
     let set: HashSet<_> = vec.iter().collect();
@@ -47,7 +47,7 @@ fn test_vec_unique_with_min_size(tc: TestCase) {
     let vec: Vec<i32> = tc.draw(
         generators::vecs(generators::integers::<i32>())
             .min_size(min_size)
-            .unique(),
+            .unique(true),
     );
 
     assert!(vec.len() >= min_size);

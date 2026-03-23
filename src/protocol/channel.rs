@@ -11,7 +11,6 @@ use crate::cbor_utils::{as_text, map_get};
 const CLOSE_CHANNEL_PAYLOAD: &[u8] = &[0xFE];
 const CLOSE_CHANNEL_MESSAGE_ID: u32 = (1u32 << 31) - 1;
 
-/// A logical channel on a connection.
 pub struct Channel {
     pub channel_id: u32,
     connection: Arc<Connection>,

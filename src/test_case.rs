@@ -25,6 +25,15 @@ pub trait __IsTestCase {}
 impl __IsTestCase for TestCase {}
 pub fn __assert_is_test_case<T: __IsTestCase>() {}
 
+#[derive(Debug)]
+pub struct StopTestError;
+impl std::fmt::Display for StopTestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Server ran out of data (StopTest)")
+    }
+}
+impl std::error::Error for StopTestError {}
+
 static PROTOCOL_DEBUG: LazyLock<bool> = LazyLock::new(|| {
     matches!(
         std::env::var("HEGEL_PROTOCOL_DEBUG")
@@ -35,7 +44,6 @@ static PROTOCOL_DEBUG: LazyLock<bool> = LazyLock::new(|| {
     )
 });
 
-/// The sentinel string used to identify assume-rejection panics.
 pub(crate) const ASSUME_FAIL_STRING: &str = "__HEGEL_ASSUME_FAIL";
 
 pub(crate) struct TestCaseData {
@@ -123,7 +131,7 @@ impl TestCase {
     /// Draw a value from a generator without recording it in the output.
     ///
     /// Unlike [`draw`](Self::draw), this does not require `T: Debug` and
-    /// will never print the value in the failing-test summary.
+    /// will not print the value in the failing-test summary.
     pub fn draw_silent<T>(&self, generator: impl Generator<T>) -> T {
         generator.do_draw(self)
     }
@@ -167,8 +175,6 @@ impl TestCase {
             eprintln!("{}", message);
         }
     }
-
-    // --- Implementation details used by generators and macros ---
 
     fn record_draw<T: std::fmt::Debug>(&self, value: &T) {
         let mut inner = self.inner.borrow_mut();
@@ -295,18 +301,6 @@ pub fn generate_raw(tc: &TestCase, schema: &Value) -> Value {
 pub fn generate_from_schema<T: serde::de::DeserializeOwned>(tc: &TestCase, schema: &Value) -> T {
     deserialize_value(generate_raw(tc, schema))
 }
-
-/// Custom error for StopTest (overflow) condition.
-#[derive(Debug)]
-pub struct StopTestError;
-
-impl std::fmt::Display for StopTestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Server ran out of data (StopTest)")
-    }
-}
-
-impl std::error::Error for StopTestError {}
 
 /// Deserialize a raw CBOR value into a Rust type.
 ///

@@ -144,7 +144,7 @@ pub fn expand_test(attr: proc_macro2::TokenStream, item: proc_macro2::TokenStrea
         }
     };
 
-    let new_block: syn::Block = syn::parse2(new_body).expect("failed to parse generated body");
+    let new_block: syn::Block = syn::parse2(new_body).unwrap();
 
     let mut func = func;
     func.sig.inputs.clear();
