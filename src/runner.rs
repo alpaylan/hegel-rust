@@ -883,9 +883,7 @@ fn run_test_case<F: FnMut(TestCase)>(
     // so we retain access to the same underlying TestCaseData after the test runs.
     let tc = TestCase::new(Arc::clone(connection), test_channel, verbosity, is_final);
 
-    let result = with_test_context(|| {
-        catch_unwind(AssertUnwindSafe(|| test_fn(tc.clone())))
-    });
+    let result = with_test_context(|| catch_unwind(AssertUnwindSafe(|| test_fn(tc.clone()))));
 
     let (status, origin) = match &result {
         Ok(()) => ("VALID".to_string(), None),
