@@ -159,8 +159,8 @@ jobs:
         with:
           ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
 
-      - name: Install Rust components
-        run: rustup component add llvm-tools-preview
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal -c llvm-tools-preview
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
 
       - name: Install cargo-llvm-cov
@@ -187,6 +187,8 @@ jobs:
         with:
           ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
 
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
 
       - name: Install just
