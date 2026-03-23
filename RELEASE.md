@@ -1,3 +1,3 @@
-RELEASE_TYPE: minor
+RELEASE_TYPE: patch
 
-Provides a stateful testing interface.
+Add `#[hegel::state_machine]` for defining stateful tests.
