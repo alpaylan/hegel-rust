@@ -269,6 +269,30 @@ pub use antithesis::TestLocation;
 /// ```
 pub use hegel_macros::DefaultGenerator;
 
+/// Define a composite generator from a function.
+///
+/// The first parameter must be a [`TestCase`] and is passed automatically
+/// when the generator is drawn. Any additional parameters become parameters
+/// of the returned factory function. The function must have an explicit
+/// return type.
+///
+/// ```ignore
+/// use hegel::generators;
+///
+/// #[hegel::composite]
+/// fn sorted_vec(tc: hegel::TestCase, min_len: usize) -> Vec<i32> {
+///     let mut v: Vec<i32> = tc.draw(generators::vecs(generators::integers()).min_size(min_len));
+///     v.sort();
+///     v
+/// }
+///
+/// #[hegel::test]
+/// fn test_sorted(tc: hegel::TestCase) {
+///     let v = tc.draw(sorted_vec(3));
+///     assert!(v.len() >= 3);
+///     assert!(v.windows(2).all(|w| w[0] <= w[1]));
+/// }
+/// ```
 pub use hegel_macros::composite;
 
 /// Derive a [`StateMachine`](crate::stateful::StateMachine) implementation from an `impl` block.
