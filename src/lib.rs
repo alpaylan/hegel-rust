@@ -275,7 +275,32 @@ pub use hegel_macros::composite;
 ///
 /// See the [`stateful`] module docs for more information.
 pub use hegel_macros::state_machine;
+
+/// The main entrypoint into Hegel.
+///
+/// The function must take exactly one parameter of type [`TestCase`]. The test case can be
+/// used to generate values via [`TestCase::draw`].
+///
+/// The `#[test]` attribute is added automatically and must not be present on the function.
+///
+/// ```ignore
+/// #[hegel::test]
+/// fn my_test(tc: TestCase) {
+///     let x: i32 = tc.draw(integers());
+///     assert!(x + 0 == x);
+/// }
+/// ```
+///
+/// You can set settings using attributes on [`test`], corresponding to methods on [`Settings`]:
+/// ```ignore
+/// #[hegel::test(test_cases = 500)]
+/// fn test_runs_many_more_times(tc: TestCase) {
+///     let x: i32 = tc.draw(integers());
+///     assert!(x + 0 == x);
+/// }
+/// ```
 pub use hegel_macros::test;
+
 #[doc(hidden)]
 pub use runner::hegel;
 pub use runner::{HealthCheck, Hegel, Settings, Verbosity};

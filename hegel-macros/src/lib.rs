@@ -22,28 +22,7 @@ pub fn derive_generator(input: TokenStream) -> TokenStream {
     }
 }
 
-/// The main entrypoint into Hegel.
-///
-/// The function must take exactly one parameter of type `hegel::TestCase`. The test case can be
-/// used to generate values via `tc.draw()`.
-///
-/// The `#[test]` attribute is added automatically and must not be present on the function.
-///
-/// ```ignore
-/// #[hegel::test]
-/// fn my_test(tc: TestCase) {
-///     let x: i32 = tc.draw(integers());
-///     assert!(x + 0 == x);
-/// }
-///
-/// You can set settings with on `hegel::test`, corresponding to methods on [`Settings`](hegel::Settings):
-///
-/// #[hegel::test(test_cases = 500)]
-/// fn test_runs_many_more_times(tc: TestCase) {
-///     let x: i32 = tc.draw(integers());
-///     assert!(x + 0 == x);
-/// }
-/// ```
+// docs are in hegel's lib.rs so that we get intra-doc links
 #[proc_macro_attribute]
 pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     hegel_test::expand_test(attr.into(), item.into()).into()
