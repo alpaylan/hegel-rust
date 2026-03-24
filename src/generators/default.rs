@@ -203,8 +203,8 @@ where
 /// Derive a generator for a struct type defined externally.
 ///
 /// This macro creates a hidden generator struct with builder methods for each field,
-/// and implements [`DefaultGenerator`](crate::generators::DefaultGenerator) for the type
-/// so it can be used with [`default`](crate::generators::default).
+/// and implements [`DefaultGenerator`] for the type
+/// so it can be used with [`default`].
 ///
 /// # Example
 ///
