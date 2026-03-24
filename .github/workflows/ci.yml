@@ -23,10 +23,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
-
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal -c rustfmt -c clippy
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
@@ -57,10 +53,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
-
       - name: Install Rust
         run: rustup toolchain install ${{ matrix.rust }} --profile minimal && rustup default ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
@@ -83,10 +75,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
-
       - name: Install Rust
         run: rustup toolchain install ${{ matrix.rust }} --profile minimal && rustup default ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
@@ -105,10 +93,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
 
       - name: Install Rust
         run: rustup toolchain install nightly --profile minimal && rustup default nightly
@@ -132,10 +116,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
-
       - name: Install Rust
         run: rustup toolchain install nightly --profile minimal && rustup default nightly
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
@@ -158,10 +138,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
 
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal -c llvm-tools-preview
@@ -187,10 +163,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
-
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@ad397744b0d591a723ab90405b7247fac0e6b8db # v2
@@ -212,9 +184,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ./.github/actions/base
-        with:
-          ssh-key: ${{ secrets.HEGEL_DEPLOY_KEY }}
       - uses: cachix/install-nix-action@ba0dd844c9180cbf77aa72a116d6fbc515d0e87b # v27
       - name: Install just
         run: sudo apt-get update && sudo apt-get install -y just
