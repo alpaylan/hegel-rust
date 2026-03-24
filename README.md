@@ -33,3 +33,24 @@ fn test_addition_commutative(tc: TestCase) {
     assert_eq!(x + y, y + x);
 }
 ```
+
+This test will fail! Integer addition panics on overflow. Hegel will produce a minimal failing test case for us:
+
+```
+Draw 1: 1
+Draw 2: 2147483647
+thread 'test_addition_commutative' (2) panicked at examples/readme.rs:8:16:
+attempt to add with overflow
+```
+
+For a passing test, try:
+
+```rust
+#[hegel::test]
+fn test_wrapping_addition_commutative(tc: TestCase) {
+    let add = i32::wrapping_add;
+    let x = tc.draw(integers::<i32>());
+    let y = tc.draw(integers::<i32>());
+    assert_eq!(add(x, y), add(y, x));
+}
+```
