@@ -10,11 +10,10 @@
 //!
 //! ## Install Hegel
 //!
-//! Add `hegel-rust` to your `Cargo.toml` as a dev dependency:
+//! Add `hegel-rust` to your `Cargo.toml` as a dev dependency using cargo:
 //!
-//! ```toml
-//! [dev-dependencies]
-//! hegeltest = "0.1.0"
+//! ```bash
+//! cargo add --dev hegeltest
 //! ```
 //!
 //! ## Write your first test
