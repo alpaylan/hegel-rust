@@ -1,7 +1,7 @@
 mod common;
 
 use common::project::TempRustProject;
-use common::utils::assert_matches_regex;
+use common::utils::{assert_matches_regex, is_nightly};
 
 const FAILING_TEST_CODE: &str = r#"
 use hegel::generators;
@@ -22,16 +22,16 @@ fn test_failing_test_output() {
         .cargo_run(&[]);
 
     // For example:
+    //   Draw 1: 0
     //   thread 'main' (1) panicked at src/main.rs:7:9:
     //   intentional failure: 0
-    //   Draw 1: 0
     //   note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
     assert_matches_regex(
         &output.stderr,
         concat!(
+            r"Draw 1: -?\d+\n",
             r"thread '.*' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
-            r"intentional failure: -?\d+\n",
-            r"Draw 1: -?\d+",
+            r"intentional failure: -?\d+",
         ),
     );
 }
@@ -44,39 +44,47 @@ fn test_failing_test_output_with_backtrace() {
         .expect_failure("intentional failure")
         .cargo_run(&[]);
 
+    let closure_name = if is_nightly() {
+        r"\{closure#0\}"
+    } else {
+        r"\{\{closure\}\}"
+    };
     // For example:
+    //   Draw 1: 0
     //   thread 'main' (1) panicked at src/main.rs:7:9:
     //   intentional failure: 0
-    //   Draw 1: 0
     //   stack backtrace:
     //      0: __rustc::rust_begin_unwind
     //      1: core::panicking::panic_fmt
-    //      2: temp_hegel_test::main::{{closure}}
+    //      2: temp_hegel_test_N::main::{{closure}}
     //      ...
     //      N: hegel::runner::handle_connection
     //      ...
-    //      M: temp_hegel_test::main
+    //      M: temp_hegel_test_N::main
     //      ...
     //   note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
     assert_matches_regex(
         &output.stderr,
-        concat!(
-            r"(?s)",
-            r"thread 'main' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
-            r"intentional failure: -?\d+\n",
-            r"Draw 1: -?\d+\n",
-            r"stack backtrace:\n",
-            r"\s+0: .*\n", // frame 0: panic machinery
-            r".*",
-            r"\s+1: core::panicking::panic_fmt\n", // frame 1: panic_fmt
-            r".*",
-            r"\s+2: temp_hegel_test::main::\{\{closure\}\}\n", // frame 2: user's closure
-            r".*",
-            r"hegel::runner::", // hegel internals appear
-            r".*",
-            r"temp_hegel_test::main\n", // user's main (not closure)
-            r".*",
-            r"note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace\.",
+        &format!(
+            concat!(
+                r"(?s)",
+                r"Draw 1: -?\d+\n",
+                r"thread 'main' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
+                r"intentional failure: -?\d+\n",
+                r"stack backtrace:\n",
+                r"\s+0: .*\n", // frame 0: panic machinery
+                r".*",
+                r"\s+1: core::panicking::panic_fmt\n", // frame 1: panic_fmt
+                r".*",
+                r"\s+2: temp_hegel_test_\d+::main::{closure_name}\n", // frame 2: user's closure
+                r".*",
+                r"hegel::runner::", // hegel internals appear
+                r".*",
+                r"temp_hegel_test_\d+::main\n", // user's main (not closure)
+                r".*",
+                r"note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace\.",
+            ),
+            closure_name = closure_name,
         ),
     );
 }
@@ -89,22 +97,30 @@ fn test_failing_test_output_with_full_backtrace() {
         .expect_failure("intentional failure")
         .cargo_run(&[]);
 
+    let closure_name = if is_nightly() {
+        r"\{closure#0\}"
+    } else {
+        r"\{\{closure\}\}"
+    };
     assert_matches_regex(
         &output.stderr,
-        concat!(
-            r"(?s)",
-            r"thread 'main' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
-            r"intentional failure: -?\d+\n",
-            r"Draw 1: -?\d+\n",
-            r"stack backtrace:\n",
-            r"\s+0: .*\n", // starts at frame 0
-            r".*",
-            r"temp_hegel_test::main::\{\{closure\}\}", // user's closure
-            r".*",
-            r"hegel::runner::", // hegel internals
-            r".*",
-            r"temp_hegel_test::main\n", // user's main
-            r".*$",
+        &format!(
+            concat!(
+                r"(?s)",
+                r"Draw 1: -?\d+\n",
+                r"thread 'main' \(\d+\) panicked at src/main\.rs:\d+:\d+:\n",
+                r"intentional failure: -?\d+\n",
+                r"stack backtrace:\n",
+                r"\s+0: .*\n", // starts at frame 0
+                r".*",
+                r"temp_hegel_test_\d+::main::{closure_name}", // user's closure
+                r".*",
+                r"hegel::runner::", // hegel internals
+                r".*",
+                r"temp_hegel_test_\d+::main\n", // user's main
+                r".*$",
+            ),
+            closure_name = closure_name,
         ),
     );
     assert!(

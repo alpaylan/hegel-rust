@@ -4,9 +4,11 @@ thread_local! {
     static IN_TEST_CONTEXT: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Mark whether we are currently inside a Hegel test context.
-pub(crate) fn set_in_test_context(value: bool) {
-    IN_TEST_CONTEXT.with(|c| c.set(value));
+pub(crate) fn with_test_context<R>(f: impl FnOnce() -> R) -> R {
+    IN_TEST_CONTEXT.set(true);
+    let result = f();
+    IN_TEST_CONTEXT.set(false);
+    result
 }
 
 /// Returns `true` if we are currently inside a Hegel test context.
@@ -22,5 +24,5 @@ pub(crate) fn set_in_test_context(value: bool) {
 /// }
 /// ```
 pub fn currently_in_test_context() -> bool {
-    IN_TEST_CONTEXT.with(|c| c.get())
+    IN_TEST_CONTEXT.get()
 }

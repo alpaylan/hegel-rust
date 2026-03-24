@@ -1,7 +1,7 @@
 use crate::antithesis::{TestLocation, is_running_in_antithesis};
-use crate::control::{currently_in_test_context, set_in_test_context};
+use crate::control::{currently_in_test_context, with_test_context};
 use crate::protocol::{Channel, Connection, HANDSHAKE_STRING, SERVER_CRASHED_MESSAGE};
-use crate::test_case::{ASSUME_FAIL_STRING, TestCase};
+use crate::test_case::{ASSUME_FAIL_STRING, STOP_TEST_STRING, TestCase};
 use ciborium::Value;
 
 use crate::cbor_utils::{as_bool, as_text, as_u64, cbor_map, map_get};
@@ -888,15 +888,14 @@ fn run_test_case<F: FnMut(TestCase)>(
     // Create TestCase. The test function gets a clone (cheap Rc bump),
     // so we retain access to the same underlying TestCaseData after the test runs.
     let tc = TestCase::new(Arc::clone(connection), test_channel, verbosity, is_final);
-    set_in_test_context(true);
 
-    let result = catch_unwind(AssertUnwindSafe(|| test_fn(tc.clone())));
+    let result = with_test_context(|| catch_unwind(AssertUnwindSafe(|| test_fn(tc.clone()))));
 
     let (status, origin) = match &result {
         Ok(()) => ("VALID".to_string(), None),
         Err(e) => {
             let msg = panic_message(e);
-            if msg == ASSUME_FAIL_STRING {
+            if msg == ASSUME_FAIL_STRING || msg == STOP_TEST_STRING {
                 ("INVALID".to_string(), None)
             } else {
                 got_interesting.store(true, Ordering::SeqCst);
@@ -918,10 +917,6 @@ fn run_test_case<F: FnMut(TestCase)>(
                         thread_name, thread_id, location
                     );
                     eprintln!("{}", msg);
-
-                    for value in tc.take_output() {
-                        eprintln!("{}", value);
-                    }
 
                     if backtrace.status() == BacktraceStatus::Captured {
                         let is_full = std::env::var("RUST_BACKTRACE")
@@ -957,8 +952,6 @@ fn run_test_case<F: FnMut(TestCase)>(
         };
         tc.send_mark_complete(&mark_complete);
     }
-
-    set_in_test_context(false);
 }
 
 /// Extract a message from a panic payload.

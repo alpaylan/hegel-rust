@@ -25,8 +25,8 @@ impl<G, T> VecGenerator<G, T> {
         self
     }
 
-    pub fn unique(mut self) -> Self {
-        self.unique = true;
+    pub fn unique(mut self, unique: bool) -> Self {
+        self.unique = unique;
         self
     }
 }
@@ -226,7 +226,7 @@ where
                 tc.stop_span(false);
                 attempts += 1;
             }
-            tc.assume(map.len() >= self.min_size);
+            assert!(map.len() >= self.min_size);
             tc.stop_span(false);
             map
         }

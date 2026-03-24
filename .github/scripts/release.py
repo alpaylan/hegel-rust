@@ -139,8 +139,13 @@ def release() -> None:
     set_version(ROOT / "hegel-macros" / "Cargo.toml", new_version)
     set_macros_dep_version(ROOT / "Cargo.toml", new_version)
 
-    # regenerate lockfile after version bump
+    # regenerate lockfiles after version bump
     subprocess.run(["cargo", "generate-lockfile"], check=True, cwd=ROOT)
+    subprocess.run(
+        ["cargo", "generate-lockfile"],
+        check=True,
+        cwd=(ROOT / "tests" / "conformance" / "rust"),
+    )
 
     add_changelog(ROOT / "CHANGELOG.md", version=new_version, content=content)
 
@@ -160,6 +165,7 @@ def release() -> None:
         "Cargo.toml",
         "Cargo.lock",
         "hegel-macros/Cargo.toml",
+        "tests/conformance/rust/Cargo.lock",
         "CHANGELOG.md",
         cwd=ROOT,
     )

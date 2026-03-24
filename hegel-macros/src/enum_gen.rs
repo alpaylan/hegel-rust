@@ -6,15 +6,10 @@ use crate::utils::{
     cbor_array, cbor_map, cbor_text, cbor_to_iter, default_gen_bounds, tuple_schema,
 };
 
-// --- Enum-specific helpers ---
-
 fn cbor_int(val: proc_macro2::TokenStream) -> proc_macro2::TokenStream {
     quote! { hegel::ciborium::Value::Integer(hegel::ciborium::value::Integer::from(#val)) }
 }
 
-// --- Variant classification ---
-
-/// Classification of an enum variant for code generation.
 enum VariantKind<'a> {
     /// Unit variant like `Pending`
     Unit,

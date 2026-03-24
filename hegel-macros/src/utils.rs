@@ -1,7 +1,5 @@
 use quote::{format_ident, quote};
 
-// --- CBOR construction helpers ---
-
 pub(crate) fn cbor_text(s: &str) -> proc_macro2::TokenStream {
     quote! { hegel::ciborium::Value::Text(#s.to_string()) }
 }
@@ -20,16 +18,12 @@ pub(crate) fn cbor_array(items: Vec<proc_macro2::TokenStream>) -> proc_macro2::T
     quote! { hegel::ciborium::Value::Array(vec![#(#items),*]) }
 }
 
-// --- Schema construction helpers ---
-
 pub(crate) fn tuple_schema(elements: Vec<proc_macro2::TokenStream>) -> proc_macro2::TokenStream {
     cbor_map(vec![
         (cbor_text("type"), cbor_text("tuple")),
         (cbor_text("elements"), cbor_array(elements)),
     ])
 }
-
-// --- CBOR parsing helpers ---
 
 pub(crate) fn cbor_to_iter(
     var_name: &str,
@@ -44,8 +38,6 @@ pub(crate) fn cbor_to_iter(
         };
     }
 }
-
-// --- Bounds generation ---
 
 /// Generator DefaultGenerator + Send + Sync bounds for a set of types.
 pub(crate) fn default_gen_bounds(

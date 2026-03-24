@@ -16,9 +16,9 @@
 
 To install: `cargo add --dev hegeltest`.
 
-## Quick Start
+## Quickstart
 
-A simple Hegel test:
+Here's a quick example of how to write a Hegel test:
 
 ```rust
 use hegel::generators::integers;
