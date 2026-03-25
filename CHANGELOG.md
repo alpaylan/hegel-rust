@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5 - 2026-03-25
+
+This release extends the tuples! macro to handle 1-tuples and 0-tuples correctly.
+
 ## 0.2.4 - 2026-03-25
 
 This release moves over to using the new stdio version of hegel-core.
