@@ -34,7 +34,7 @@ fn test_addition_commutative(tc: TestCase) {
 }
 ```
 
-This test will fail! Integer addition panics on overflow. Hegel will produce a minimal failing test case for us:
+This test will fail when run with `cargo test`! Integer addition panics on overflow in the `test` profile. Hegel will produce a minimal failing test case for us:
 
 ```
 Draw 1: 1
