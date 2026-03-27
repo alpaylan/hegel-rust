@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4 - 2026-03-27
+
+This patch improves documentation and adds scraped examples to the docs.
+
 ## 0.3.3 - 2026-03-27
 
 Fix server crash detection. The client now properly detects when the hegel server process exits unexpectedly, instead of hanging indefinitely.
