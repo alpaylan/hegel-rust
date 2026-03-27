@@ -8,7 +8,7 @@
 #![allow(dead_code)]
 
 use hegel::TestCase;
-use hegel::generators::integers;
+use hegel::generators as gs;
 use std::cmp::Ord;
 use std::marker::Copy;
 
@@ -69,7 +69,7 @@ struct MinStackTest {
 impl MinStackTest {
     #[rule]
     fn push(&mut self, tc: TestCase) {
-        let element = tc.draw(integers::<i32>());
+        let element = tc.draw(gs::integers::<i32>());
         self.stack.push(element);
     }
 
@@ -87,7 +87,7 @@ impl MinStackTest {
     }
 
     #[invariant]
-    fn minimums_agree(&self, _: TestCase) {
+    fn minimums_agree(&mut self, _: TestCase) {
         assert_eq!(self.stack.minimum(), self.stack.reference());
     }
 }

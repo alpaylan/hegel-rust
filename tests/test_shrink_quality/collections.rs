@@ -1,14 +1,13 @@
 use std::collections::HashSet;
 
 use crate::common::utils::{Minimal, minimal};
-use hegel::generators::{self, Generator};
+use hegel::generators::{self as gs, Generator};
 
 #[test]
 fn test_minimize_3_set() {
-    let result = minimal(
-        generators::hashsets(generators::integers::<i64>()),
-        |x: &HashSet<i64>| x.len() >= 3,
-    );
+    let result = minimal(gs::hashsets(gs::integers::<i64>()), |x: &HashSet<i64>| {
+        x.len() >= 3
+    });
     assert!(
         result == HashSet::from([0, 1, 2]) || result == HashSet::from([-1, 0, 1]),
         "Expected {{0, 1, 2}} or {{-1, 0, 1}}, got {:?}",
@@ -20,10 +19,7 @@ fn test_minimize_3_set() {
 fn test_minimize_sets_sampled_from() {
     let items: Vec<i64> = (0..10).collect();
     assert_eq!(
-        minimal(
-            generators::hashsets(generators::sampled_from(items)).min_size(3),
-            |_| true
-        ),
+        minimal(gs::hashsets(gs::sampled_from(items)).min_size(3), |_| true),
         HashSet::from([0, 1, 2])
     );
 }
@@ -31,7 +27,7 @@ fn test_minimize_sets_sampled_from() {
 #[test]
 fn test_minimize_3_set_of_tuples() {
     let result = minimal(
-        generators::hashsets(generators::tuples!(generators::integers::<i64>())),
+        gs::hashsets(gs::tuples!(gs::integers::<i64>())),
         |x: &HashSet<(i64,)>| x.len() >= 2,
     );
     assert_eq!(result, HashSet::from([(0,), (1,)]));
@@ -41,8 +37,8 @@ fn test_minimize_3_set_of_tuples() {
 
 #[hegel::composite]
 fn vec_and_int(tc: hegel::TestCase) -> (Vec<i64>, i64) {
-    let v: Vec<i64> = tc.draw(generators::vecs(generators::integers::<i64>()));
-    let i: i64 = tc.draw(generators::integers::<i64>());
+    let v: Vec<i64> = tc.draw(gs::vecs(gs::integers::<i64>()));
+    let i: i64 = tc.draw(gs::integers::<i64>());
     (v, i)
 }
 
@@ -105,7 +101,7 @@ fn test_duplicate_containment() {
 #[test]
 fn test_reordering_bytes() {
     let ls = minimal(
-        generators::vecs(generators::integers::<i64>().min_value(0).max_value(1000)),
+        gs::vecs(gs::integers::<i64>().min_value(0).max_value(1000)),
         |x: &Vec<i64>| x.iter().sum::<i64>() >= 10 && x.len() >= 3,
     );
     let mut sorted = ls.clone();
@@ -116,10 +112,9 @@ fn test_reordering_bytes() {
 #[test]
 fn test_minimize_long_list() {
     assert_eq!(
-        minimal(
-            generators::vecs(generators::booleans()).min_size(50),
-            |x: &Vec<bool>| x.len() >= 70
-        ),
+        minimal(gs::vecs(gs::booleans()).min_size(50), |x: &Vec<bool>| x
+            .len()
+            >= 70),
         vec![false; 70]
     );
 }
@@ -128,7 +123,7 @@ fn test_minimize_long_list() {
 fn test_minimize_list_of_longish_lists() {
     let size = 5;
     let xs = minimal(
-        generators::vecs(generators::vecs(generators::booleans())),
+        gs::vecs(gs::vecs(gs::booleans())),
         move |x: &Vec<Vec<bool>>| {
             x.iter()
                 .filter(|t| t.iter().any(|&b| b) && t.len() >= 2)
@@ -144,44 +139,36 @@ fn test_minimize_list_of_longish_lists() {
 
 #[test]
 fn test_minimize_list_of_fairly_non_unique_ints() {
-    let xs = minimal(
-        generators::vecs(generators::integers::<i64>()),
-        |x: &Vec<i64>| {
-            let unique: HashSet<_> = x.iter().collect();
-            unique.len() < x.len()
-        },
-    );
+    let xs = minimal(gs::vecs(gs::integers::<i64>()), |x: &Vec<i64>| {
+        let unique: HashSet<_> = x.iter().collect();
+        unique.len() < x.len()
+    });
     assert_eq!(xs.len(), 2);
 }
 
 #[test]
 fn test_list_with_complex_sorting_structure() {
-    let xs = minimal(
-        generators::vecs(generators::vecs(generators::booleans())),
-        |x: &Vec<Vec<bool>>| {
-            let reversed: Vec<Vec<bool>> = x
-                .iter()
-                .map(|t| t.iter().rev().cloned().collect())
-                .collect();
-            reversed > *x && x.len() > 3
-        },
-    );
+    let xs = minimal(gs::vecs(gs::vecs(gs::booleans())), |x: &Vec<Vec<bool>>| {
+        let reversed: Vec<Vec<bool>> = x
+            .iter()
+            .map(|t| t.iter().rev().cloned().collect())
+            .collect();
+        reversed > *x && x.len() > 3
+    });
     assert_eq!(xs.len(), 4);
 }
 
 #[test]
 fn test_list_with_wide_gap() {
-    let xs = minimal(
-        generators::vecs(generators::integers::<i64>()),
-        |x: &Vec<i64>| {
-            if x.is_empty() {
-                return false;
-            }
-            let max = *x.iter().max().unwrap();
-            let min = *x.iter().min().unwrap();
-            max > min + 10 && min + 10 > 0
-        },
-    );
+    let xs = minimal(gs::vecs(gs::integers::<i64>()), |x: &Vec<i64>| {
+        if x.is_empty() {
+            return false;
+        }
+        let max = *x.iter().max().unwrap();
+        let min = *x.iter().min().unwrap();
+        min.checked_add(10)
+            .is_some_and(|min_plus_10| max > min_plus_10 && min_plus_10 > 0)
+    });
     assert_eq!(xs.len(), 2);
     let mut sorted = xs.clone();
     sorted.sort();
@@ -193,7 +180,7 @@ fn test_list_with_wide_gap() {
 #[test]
 fn test_minimize_list_of_sets() {
     let result = minimal(
-        generators::vecs(generators::hashsets(generators::booleans())),
+        gs::vecs(gs::hashsets(gs::booleans())),
         |x: &Vec<HashSet<bool>>| x.iter().filter(|s| !s.is_empty()).count() >= 3,
     );
     assert_eq!(result, vec![HashSet::from([false]); 3]);
@@ -202,7 +189,7 @@ fn test_minimize_list_of_sets() {
 #[test]
 fn test_minimize_list_of_lists() {
     let result = minimal(
-        generators::vecs(generators::vecs(generators::integers::<i64>())),
+        gs::vecs(gs::vecs(gs::integers::<i64>())),
         |x: &Vec<Vec<i64>>| x.iter().filter(|s| !s.is_empty()).count() >= 3,
     );
     assert_eq!(result, vec![vec![0]; 3]);
@@ -211,10 +198,7 @@ fn test_minimize_list_of_lists() {
 #[test]
 fn test_minimize_list_of_tuples() {
     let result = minimal(
-        generators::vecs(generators::tuples!(
-            generators::integers::<i64>(),
-            generators::integers::<i64>()
-        )),
+        gs::vecs(gs::tuples!(gs::integers::<i64>(), gs::integers::<i64>())),
         |x: &Vec<(i64, i64)>| x.len() >= 2,
     );
     assert_eq!(result, vec![(0, 0), (0, 0)]);
@@ -227,9 +211,7 @@ fn test_lists_forced_near_top_0() {
     let n = 0;
     assert_eq!(
         minimal(
-            generators::vecs(generators::integers::<i64>())
-                .min_size(n)
-                .max_size(n + 2),
+            gs::vecs(gs::integers::<i64>()).min_size(n).max_size(n + 2),
             move |t: &Vec<i64>| t.len() == n + 2
         ),
         vec![0i64; n + 2]
@@ -241,9 +223,7 @@ fn test_lists_forced_near_top_1() {
     let n = 1;
     assert_eq!(
         minimal(
-            generators::vecs(generators::integers::<i64>())
-                .min_size(n)
-                .max_size(n + 2),
+            gs::vecs(gs::integers::<i64>()).min_size(n).max_size(n + 2),
             move |t: &Vec<i64>| t.len() == n + 2
         ),
         vec![0i64; n + 2]
@@ -255,9 +235,7 @@ fn test_lists_forced_near_top_5() {
     let n = 5;
     assert_eq!(
         minimal(
-            generators::vecs(generators::integers::<i64>())
-                .min_size(n)
-                .max_size(n + 2),
+            gs::vecs(gs::integers::<i64>()).min_size(n).max_size(n + 2),
             move |t: &Vec<i64>| t.len() == n + 2
         ),
         vec![0i64; n + 2]
@@ -269,9 +247,7 @@ fn test_lists_forced_near_top_10() {
     let n = 10;
     assert_eq!(
         minimal(
-            generators::vecs(generators::integers::<i64>())
-                .min_size(n)
-                .max_size(n + 2),
+            gs::vecs(gs::integers::<i64>()).min_size(n).max_size(n + 2),
             move |t: &Vec<i64>| t.len() == n + 2
         ),
         vec![0i64; n + 2]
@@ -282,17 +258,15 @@ fn test_lists_forced_near_top_10() {
 
 #[test]
 fn test_dictionary_minimizes_to_empty() {
-    let result: std::collections::HashMap<i64, String> = minimal(
-        generators::hashmaps(generators::integers::<i64>(), generators::text()),
-        |_| true,
-    );
+    let result: std::collections::HashMap<i64, String> =
+        minimal(gs::hashmaps(gs::integers::<i64>(), gs::text()), |_| true);
     assert!(result.is_empty());
 }
 
 #[test]
 fn test_dictionary_minimizes_values() {
     let result = minimal(
-        generators::hashmaps(generators::integers::<i64>(), generators::text()),
+        gs::hashmaps(gs::integers::<i64>(), gs::text()),
         |t: &std::collections::HashMap<i64, String>| t.len() >= 3,
     );
     assert!(result.len() >= 3);
@@ -312,10 +286,7 @@ fn test_dictionary_minimizes_values() {
 fn test_minimize_multi_key_dicts() {
     use std::collections::HashMap;
     let result: HashMap<String, bool> = minimal(
-        generators::hashmaps(
-            generators::booleans().map(|b| b.to_string()),
-            generators::booleans(),
-        ),
+        gs::hashmaps(gs::booleans().map(|b| b.to_string()), gs::booleans()),
         |x: &HashMap<String, bool>| !x.is_empty(),
     );
     assert_eq!(result.len(), 1);
@@ -326,8 +297,7 @@ fn test_minimize_multi_key_dicts() {
 fn test_find_large_union_list() {
     let size = 10;
     let result = minimal(
-        generators::vecs(generators::hashsets(generators::integers::<i64>()).min_size(1))
-            .min_size(1),
+        gs::vecs(gs::hashsets(gs::integers::<i64>()).min_size(1)).min_size(1),
         move |x: &Vec<HashSet<i64>>| {
             let union: HashSet<_> = x.iter().flat_map(|s| s.iter().cloned()).collect();
             union.len() >= size
@@ -344,7 +314,7 @@ fn test_find_large_union_list() {
 #[test]
 fn test_find_dictionary() {
     let smallest: std::collections::HashMap<i64, i64> = minimal(
-        generators::hashmaps(generators::integers::<i64>(), generators::integers::<i64>()),
+        gs::hashmaps(gs::integers::<i64>(), gs::integers::<i64>()),
         |xs: &std::collections::HashMap<i64, i64>| xs.iter().any(|(&k, &v)| k > v),
     );
     assert_eq!(smallest.len(), 1);
@@ -352,14 +322,11 @@ fn test_find_dictionary() {
 
 #[test]
 fn test_can_find_list() {
-    let x = minimal(
-        generators::vecs(generators::integers::<i64>()),
-        |x: &Vec<i64>| {
-            x.iter()
-                .try_fold(0i64, |acc, &v| acc.checked_add(v))
-                .is_some_and(|s| s >= 10)
-        },
-    );
+    let x = minimal(gs::vecs(gs::integers::<i64>()), |x: &Vec<i64>| {
+        x.iter()
+            .try_fold(0i64, |acc, &v| acc.checked_add(v))
+            .is_some_and(|s| s >= 10)
+    });
     assert_eq!(x.iter().sum::<i64>(), 10);
 }
 
@@ -369,9 +336,7 @@ fn test_can_find_list() {
 fn test_can_collectively_minimize_integers() {
     let n = 10;
     let xs = Minimal::new(
-        generators::vecs(generators::integers::<i64>())
-            .min_size(n)
-            .max_size(n),
+        gs::vecs(gs::integers::<i64>()).min_size(n).max_size(n),
         |x: &Vec<i64>| {
             let unique: HashSet<_> = x.iter().collect();
             unique.len() >= 2
@@ -388,9 +353,7 @@ fn test_can_collectively_minimize_integers() {
 fn test_can_collectively_minimize_booleans() {
     let n = 10;
     let xs = Minimal::new(
-        generators::vecs(generators::booleans())
-            .min_size(n)
-            .max_size(n),
+        gs::vecs(gs::booleans()).min_size(n).max_size(n),
         |x: &Vec<bool>| {
             let unique: HashSet<_> = x.iter().collect();
             unique.len() >= 2
@@ -407,7 +370,7 @@ fn test_can_collectively_minimize_booleans() {
 fn test_can_collectively_minimize_text() {
     let n = 10;
     let xs = Minimal::new(
-        generators::vecs(generators::text()).min_size(n).max_size(n),
+        gs::vecs(gs::text()).min_size(n).max_size(n),
         |x: &Vec<String>| {
             let unique: HashSet<_> = x.iter().collect();
             unique.len() >= 2

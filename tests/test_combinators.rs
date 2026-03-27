@@ -2,41 +2,35 @@ mod common;
 
 use common::utils::find_any;
 use hegel::TestCase;
-use hegel::generators::{self, Generator};
+use hegel::generators::{self as gs, Generator};
 
 #[hegel::test]
 fn test_sampled_from_returns_element_from_list(tc: TestCase) {
-    let options = tc.draw(generators::vecs(generators::integers::<i32>()).min_size(1));
-    let value = tc.draw(generators::sampled_from(options.clone()));
+    let options = tc.draw(gs::vecs(gs::integers::<i32>()).min_size(1));
+    let value = tc.draw(gs::sampled_from(options.clone()));
     assert!(options.contains(&value));
 }
 
 #[hegel::test]
 fn test_sampled_from_strings(tc: TestCase) {
-    let options = tc.draw(generators::vecs(generators::text()).min_size(1));
-    let value = tc.draw(generators::sampled_from(options.clone()));
+    let options = tc.draw(gs::vecs(gs::text()).min_size(1));
+    let value = tc.draw(gs::sampled_from(options.clone()));
     assert!(options.contains(&value));
 }
 
 #[test]
 fn test_optional_can_generate_some() {
-    find_any(generators::optional(generators::integers::<i32>()), |v| {
-        v.is_some()
-    });
+    find_any(gs::optional(gs::integers::<i32>()), |v| v.is_some());
 }
 
 #[test]
 fn test_optional_can_generate_none() {
-    find_any(generators::optional(generators::integers::<i32>()), |v| {
-        v.is_none()
-    });
+    find_any(gs::optional(gs::integers::<i32>()), |v| v.is_none());
 }
 
 #[hegel::test]
 fn test_optional_respects_inner_generator_bounds(tc: TestCase) {
-    let value = tc.draw(generators::optional(
-        generators::integers().min_value(10).max_value(20),
-    ));
+    let value = tc.draw(gs::optional(gs::integers().min_value(10).max_value(20)));
     if let Some(n) = value {
         assert!((10..=20).contains(&n));
     }
@@ -45,8 +39,8 @@ fn test_optional_respects_inner_generator_bounds(tc: TestCase) {
 #[hegel::test]
 fn test_one_of_returns_value_from_one_generator(tc: TestCase) {
     let value = tc.draw(hegel::one_of!(
-        generators::integers().min_value(0).max_value(10),
-        generators::integers().min_value(100).max_value(110),
+        gs::integers().min_value(0).max_value(10),
+        gs::integers().min_value(100).max_value(110),
     ));
     assert!((0..=10).contains(&value) || (100..=110).contains(&value));
 }
@@ -54,11 +48,11 @@ fn test_one_of_returns_value_from_one_generator(tc: TestCase) {
 #[hegel::test]
 fn test_one_of_with_different_types_via_map(tc: TestCase) {
     let value = tc.draw(hegel::one_of!(
-        generators::integers::<i32>()
+        gs::integers::<i32>()
             .min_value(0)
             .max_value(100)
             .map(|n| format!("number: {}", n)),
-        generators::text()
+        gs::text()
             .min_size(1)
             .max_size(10)
             .map(|s| format!("text: {}", s)),
@@ -68,18 +62,18 @@ fn test_one_of_with_different_types_via_map(tc: TestCase) {
 
 #[hegel::test]
 fn test_one_of_many(tc: TestCase) {
-    let generators = (0..10).map(|i| generators::just(i).boxed()).collect();
-    let value = tc.draw(generators::one_of(generators));
+    let generators = (0..10).map(|i| gs::just(i).boxed()).collect();
+    let value = tc.draw(gs::one_of(generators));
     assert!((0..10).contains(&value));
 }
 
 #[hegel::test]
 fn test_flat_map(tc: TestCase) {
     let value = tc.draw(
-        generators::integers::<usize>()
+        gs::integers::<usize>()
             .min_value(1)
             .max_value(5)
-            .flat_map(|len| generators::text().min_size(len).max_size(len)),
+            .flat_map(|len| gs::text().min_size(len).max_size(len)),
     );
     assert!(!value.is_empty());
     assert!(value.chars().count() <= 5);
@@ -88,7 +82,7 @@ fn test_flat_map(tc: TestCase) {
 #[hegel::test]
 fn test_filter(tc: TestCase) {
     let value = tc.draw(
-        generators::integers::<i32>()
+        gs::integers::<i32>()
             .min_value(0)
             .max_value(100)
             .filter(|n| n % 2 == 0),
@@ -99,10 +93,7 @@ fn test_filter(tc: TestCase) {
 
 #[hegel::test]
 fn test_boxed_generator_clone(tc: TestCase) {
-    let gen1 = generators::integers::<i32>()
-        .min_value(0)
-        .max_value(10)
-        .boxed();
+    let gen1 = gs::integers::<i32>().min_value(0).max_value(10).boxed();
     let gen2 = gen1.clone();
     let v1 = tc.draw(gen1);
     let v2 = tc.draw(gen2);
@@ -113,10 +104,7 @@ fn test_boxed_generator_clone(tc: TestCase) {
 #[hegel::test]
 fn test_boxed_generator_double_boxed(tc: TestCase) {
     // Calling .boxed() on an already-boxed generator should not re-wrap
-    let gen1 = generators::integers::<i32>()
-        .min_value(0)
-        .max_value(10)
-        .boxed();
+    let gen1 = gs::integers::<i32>().min_value(0).max_value(10).boxed();
     let gen2 = gen1.boxed();
     let value = tc.draw(gen2);
     assert!((0..=10).contains(&value));
@@ -135,14 +123,14 @@ fn test_sampled_from_non_primitive(tc: TestCase) {
         Point { x: 3, y: 4 },
         Point { x: 5, y: 6 },
     ];
-    let value = tc.draw(generators::sampled_from(options.clone()));
+    let value = tc.draw(gs::sampled_from(options.clone()));
     assert!(options.contains(&value));
 }
 
 #[hegel::test]
 fn test_optional_mapped(tc: TestCase) {
-    let value = tc.draw(generators::optional(
-        generators::integers::<i32>()
+    let value = tc.draw(gs::optional(
+        gs::integers::<i32>()
             .min_value(0)
             .max_value(100)
             .map(|n| format!("value: {}", n)),
@@ -156,7 +144,7 @@ fn test_optional_mapped(tc: TestCase) {
 fn test_draw_silent_non_debug(tc: TestCase) {
     // Closure is not Debug, so this can only work with draw_silent
     let f = tc.draw_silent(
-        generators::integers::<i32>()
+        gs::integers::<i32>()
             .min_value(0)
             .max_value(1000)
             .map(|n| move |x: i32| x + n),
@@ -167,12 +155,12 @@ fn test_draw_silent_non_debug(tc: TestCase) {
 #[test]
 fn test_optional_mapped_find_any() {
     find_any(
-        generators::optional(generators::integers::<i32>().map(|n| n.wrapping_mul(2))),
+        gs::optional(gs::integers::<i32>().map(|n| n.wrapping_mul(2))),
         |v| v.is_some(),
     );
 
     find_any(
-        generators::optional(generators::integers::<i32>().map(|n| n.wrapping_mul(2))),
+        gs::optional(gs::integers::<i32>().map(|n| n.wrapping_mul(2))),
         |v| v.is_none(),
     );
 }

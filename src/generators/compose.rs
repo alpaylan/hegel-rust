@@ -54,13 +54,13 @@ pub const fn fnv1a_hash(bytes: &[u8]) -> u64 {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::generators;
+/// use hegel::generators as gs;
 ///
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
 ///     let value = tc.draw(hegel::compose!(|tc| {
-///         let x = tc.draw(generators::integers::<i32>().min_value(0).max_value(10));
-///         let y = tc.draw(generators::integers::<i32>().min_value(x).max_value(100));
+///         let x = tc.draw(gs::integers::<i32>().min_value(0).max_value(10));
+///         let y = tc.draw(gs::integers::<i32>().min_value(x).max_value(100));
 ///         (x, y)
 ///     }));
 /// }

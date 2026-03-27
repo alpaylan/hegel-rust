@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use hegel::TestCase;
-use hegel::generators::integers;
+use hegel::generators as gs;
 
 struct IntegerStack {
     stack: Vec<i32>,
@@ -11,7 +11,7 @@ struct IntegerStack {
 impl IntegerStack {
     #[rule]
     fn push(&mut self, tc: TestCase) {
-        let integers = integers::<i32>;
+        let integers = gs::integers::<i32>;
         let element = tc.draw(integers());
         self.stack.push(element);
     }
@@ -23,7 +23,7 @@ impl IntegerStack {
 
     #[rule]
     fn pop_push(&mut self, tc: TestCase) {
-        let integers = integers::<i32>;
+        let integers = gs::integers::<i32>;
         let element = tc.draw(integers());
         let initial = self.stack.clone();
         self.stack.push(element);

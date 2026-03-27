@@ -9,11 +9,11 @@ fn test_antithesis_jsonl_written_when_env_set() {
     let output_path = output_dir.path().to_str().unwrap().to_string();
 
     let code = r#"
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 fn my_test(tc: hegel::TestCase) {
-    let _ = tc.draw(generators::booleans());
+    let _ = tc.draw(gs::booleans());
 }
 "#;
 
@@ -81,11 +81,11 @@ fn test_antithesis_panics_without_feature() {
     let output_path = output_dir.path().to_str().unwrap().to_string();
 
     let code = r#"
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 fn my_test(tc: hegel::TestCase) {
-    let _ = tc.draw(generators::booleans());
+    let _ = tc.draw(gs::booleans());
 }
 "#;
 

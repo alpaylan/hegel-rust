@@ -1,22 +1,18 @@
 use crate::common::utils::find_any;
-use hegel::generators::{self, Generator};
+use hegel::generators::{self as gs, Generator};
 
 // Nested one_of: can reach all 8 branches
 
 fn nested_one_of() -> impl Generator<i64> {
     hegel::one_of!(
-        generators::just(0i64),
+        gs::just(0i64),
         hegel::one_of!(
-            generators::just(1i64),
-            generators::just(2i64),
+            gs::just(1i64),
+            gs::just(2i64),
             hegel::one_of!(
-                generators::just(3i64),
-                generators::just(4i64),
-                hegel::one_of!(
-                    generators::just(5i64),
-                    generators::just(6i64),
-                    generators::just(7i64)
-                )
+                gs::just(3i64),
+                gs::just(4i64),
+                hegel::one_of!(gs::just(5i64), gs::just(6i64), gs::just(7i64))
             )
         )
     )
@@ -66,17 +62,12 @@ fn test_one_of_flattens_branches_7() {
 
 fn nested_one_of_with_map() -> impl Generator<i64> {
     hegel::one_of!(
-        generators::just(1i64),
+        gs::just(1i64),
         hegel::one_of!(
-            hegel::one_of!(generators::just(2i64), generators::just(3i64)).map(|x| x * 2),
+            hegel::one_of!(gs::just(2i64), gs::just(3i64)).map(|x| x * 2),
             hegel::one_of!(
-                hegel::one_of!(generators::just(4i64), generators::just(5i64)).map(|x| x * 2),
-                hegel::one_of!(
-                    generators::just(6i64),
-                    generators::just(7i64),
-                    generators::just(8i64)
-                )
-                .map(|x| x * 2)
+                hegel::one_of!(gs::just(4i64), gs::just(5i64)).map(|x| x * 2),
+                hegel::one_of!(gs::just(6i64), gs::just(7i64), gs::just(8i64)).map(|x| x * 2)
             )
             .map(|x| x * 2)
         )
@@ -126,17 +117,17 @@ fn test_one_of_flattens_map_branches_32() {
 // Nested one_of with flatmap: generates Vec<()> of length 0-7
 
 fn nested_one_of_with_flatmap() -> impl Generator<Vec<()>> {
-    generators::just(()).flat_map(|x| {
+    gs::just(()).flat_map(|x| {
         hegel::one_of!(
-            generators::just(vec![x; 0]),
-            generators::just(vec![x; 1]),
+            gs::just(vec![x; 0]),
+            gs::just(vec![x; 1]),
             hegel::one_of!(
-                generators::just(vec![x; 2]),
-                generators::just(vec![x; 3]),
+                gs::just(vec![x; 2]),
+                gs::just(vec![x; 3]),
                 hegel::one_of!(
-                    generators::just(vec![x; 4]),
-                    generators::just(vec![x; 5]),
-                    hegel::one_of!(generators::just(vec![x; 6]), generators::just(vec![x; 7]))
+                    gs::just(vec![x; 4]),
+                    gs::just(vec![x; 5]),
+                    hegel::one_of!(gs::just(vec![x; 6]), gs::just(vec![x; 7]))
                 )
             )
         )
@@ -187,15 +178,15 @@ fn test_one_of_flattens_flatmap_branches_7() {
 
 fn nested_one_of_with_filter() -> impl Generator<i64> {
     hegel::one_of!(
-        generators::just(0i64),
-        generators::just(1i64),
+        gs::just(0i64),
+        gs::just(1i64),
         hegel::one_of!(
-            generators::just(2i64),
-            generators::just(3i64),
+            gs::just(2i64),
+            gs::just(3i64),
             hegel::one_of!(
-                generators::just(4i64),
-                generators::just(5i64),
-                hegel::one_of!(generators::just(6i64), generators::just(7i64))
+                gs::just(4i64),
+                gs::just(5i64),
+                hegel::one_of!(gs::just(6i64), gs::just(7i64))
             )
         )
     )

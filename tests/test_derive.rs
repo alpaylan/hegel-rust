@@ -7,7 +7,7 @@ mod common;
 
 use common::utils::{assert_all_examples, check_can_generate_examples, find_any};
 use hegel::DefaultGenerator as DeriveGenerator;
-use hegel::generators::{self, DefaultGenerator, Generator};
+use hegel::generators::{self as gs, DefaultGenerator, Generator};
 
 // ============================================================================
 // Struct definitions
@@ -122,32 +122,32 @@ enum WithNestedTypes {
 
 #[test]
 fn test_derive_simple_struct() {
-    check_can_generate_examples(generators::default::<Point>());
+    check_can_generate_examples(gs::default::<Point>());
 }
 
 #[test]
 fn test_derive_struct_with_multiple_types() {
-    check_can_generate_examples(generators::default::<Person>());
+    check_can_generate_examples(gs::default::<Person>());
 }
 
 #[test]
 fn test_derive_struct_with_optional_field() {
-    check_can_generate_examples(generators::default::<WithOptional>());
+    check_can_generate_examples(gs::default::<WithOptional>());
 }
 
 #[test]
 fn test_derive_struct_with_vec_field() {
-    check_can_generate_examples(generators::default::<WithVec>());
+    check_can_generate_examples(gs::default::<WithVec>());
 }
 
 #[test]
 fn test_derive_single_field_struct() {
-    check_can_generate_examples(generators::default::<SingleField>());
+    check_can_generate_examples(gs::default::<SingleField>());
 }
 
 #[test]
 fn test_derive_many_fields_struct() {
-    check_can_generate_examples(generators::default::<ManyFields>());
+    check_can_generate_examples(gs::default::<ManyFields>());
 }
 
 // ============================================================================
@@ -156,7 +156,7 @@ fn test_derive_many_fields_struct() {
 
 #[test]
 fn test_derive_nested_struct() {
-    check_can_generate_examples(generators::default::<WithNested>());
+    check_can_generate_examples(gs::default::<WithNested>());
 }
 
 // ============================================================================
@@ -166,22 +166,22 @@ fn test_derive_nested_struct() {
 #[test]
 fn test_derive_struct_generates_varied_values() {
     // Verify we get different x values, not always the same thing
-    let p1 = find_any(generators::default::<Point>(), |p: &Point| p.x != 0);
+    let p1 = find_any(gs::default::<Point>(), |p: &Point| p.x != 0);
     assert_ne!(p1.x, 0);
 }
 
 #[test]
 fn test_derive_struct_generates_both_bool_values() {
-    find_any(generators::default::<Person>(), |p: &Person| p.active);
-    find_any(generators::default::<Person>(), |p: &Person| !p.active);
+    find_any(gs::default::<Person>(), |p: &Person| p.active);
+    find_any(gs::default::<Person>(), |p: &Person| !p.active);
 }
 
 #[test]
 fn test_derive_struct_with_optional_generates_some_and_none() {
-    find_any(generators::default::<WithOptional>(), |w: &WithOptional| {
+    find_any(gs::default::<WithOptional>(), |w: &WithOptional| {
         w.value.is_some()
     });
-    find_any(generators::default::<WithOptional>(), |w: &WithOptional| {
+    find_any(gs::default::<WithOptional>(), |w: &WithOptional| {
         w.value.is_none()
     });
 }
@@ -192,40 +192,38 @@ fn test_derive_struct_with_optional_generates_some_and_none() {
 
 #[test]
 fn test_derive_struct_with_custom_field_generator() {
-    let g = Point::default_generator().x(generators::just(42));
+    let g = Point::default_generator().x(gs::just(42));
     assert_all_examples(g, |p: &Point| p.x == 42);
 }
 
 #[test]
 fn test_derive_struct_with_multiple_custom_fields() {
-    let g = Point::default_generator()
-        .x(generators::just(1))
-        .y(generators::just(2));
+    let g = Point::default_generator().x(gs::just(1)).y(gs::just(2));
     assert_all_examples(g, |p: &Point| p.x == 1 && p.y == 2);
 }
 
 #[test]
 fn test_derive_struct_with_constrained_field() {
-    let g = Person::default_generator().age(generators::integers().min_value(18_u32).max_value(65));
+    let g = Person::default_generator().age(gs::integers().min_value(18_u32).max_value(65));
     assert_all_examples(g, |p: &Person| p.age >= 18 && p.age <= 65);
 }
 
 #[test]
 fn test_derive_struct_builder_only_overrides_specified_field() {
     // Override x but y should still vary
-    let g = Point::default_generator().x(generators::just(0));
+    let g = Point::default_generator().x(gs::just(0));
     assert_all_examples(g, |p: &Point| p.x == 0);
 }
 
 #[test]
 fn test_derive_struct_with_mapped_field() {
-    let g = Point::default_generator().x(generators::integers::<i32>().map(|x| x.saturating_abs()));
+    let g = Point::default_generator().x(gs::integers::<i32>().map(|x| x.saturating_abs()));
     assert_all_examples(g, |p: &Point| p.x >= 0);
 }
 
 #[test]
 fn test_derive_struct_with_filtered_field() {
-    let g = Point::default_generator().x(generators::integers::<i32>().filter(|x| x % 2 == 0));
+    let g = Point::default_generator().x(gs::integers::<i32>().filter(|x| x % 2 == 0));
     assert_all_examples(g, |p: &Point| p.x % 2 == 0);
 }
 
@@ -235,104 +233,98 @@ fn test_derive_struct_with_filtered_field() {
 
 #[test]
 fn test_derive_unit_enum() {
-    check_can_generate_examples(generators::default::<Color>());
+    check_can_generate_examples(gs::default::<Color>());
 }
 
 #[test]
 fn test_derive_unit_enum_four_variants() {
-    check_can_generate_examples(generators::default::<Direction>());
+    check_can_generate_examples(gs::default::<Direction>());
 }
 
 #[test]
 fn test_derive_unit_enum_generates_all_variants() {
-    find_any(generators::default::<Color>(), |c: &Color| *c == Color::Red);
-    find_any(generators::default::<Color>(), |c: &Color| {
-        *c == Color::Green
-    });
-    find_any(generators::default::<Color>(), |c: &Color| {
-        *c == Color::Blue
-    });
+    find_any(gs::default::<Color>(), |c: &Color| *c == Color::Red);
+    find_any(gs::default::<Color>(), |c: &Color| *c == Color::Green);
+    find_any(gs::default::<Color>(), |c: &Color| *c == Color::Blue);
 }
 
 #[test]
 fn test_derive_enum_with_struct_variants() {
-    check_can_generate_examples(generators::default::<Shape>());
+    check_can_generate_examples(gs::default::<Shape>());
 }
 
 #[test]
 fn test_derive_enum_generates_each_struct_variant() {
-    find_any(generators::default::<Shape>(), |s: &Shape| {
+    find_any(gs::default::<Shape>(), |s: &Shape| {
         matches!(s, Shape::Circle { .. })
     });
-    find_any(generators::default::<Shape>(), |s: &Shape| {
+    find_any(gs::default::<Shape>(), |s: &Shape| {
         matches!(s, Shape::Rectangle { .. })
     });
 }
 
 #[test]
 fn test_derive_mixed_enum() {
-    check_can_generate_examples(generators::default::<MixedEnum>());
+    check_can_generate_examples(gs::default::<MixedEnum>());
 }
 
 #[test]
 fn test_derive_mixed_enum_generates_all_variants() {
-    find_any(generators::default::<MixedEnum>(), |m: &MixedEnum| {
+    find_any(gs::default::<MixedEnum>(), |m: &MixedEnum| {
         matches!(m, MixedEnum::Empty)
     });
-    find_any(generators::default::<MixedEnum>(), |m: &MixedEnum| {
+    find_any(gs::default::<MixedEnum>(), |m: &MixedEnum| {
         matches!(m, MixedEnum::WithValue(_))
     });
-    find_any(generators::default::<MixedEnum>(), |m: &MixedEnum| {
+    find_any(gs::default::<MixedEnum>(), |m: &MixedEnum| {
         matches!(m, MixedEnum::WithFields { .. })
     });
 }
 
 #[test]
 fn test_derive_single_variant_data_enum() {
-    check_can_generate_examples(generators::default::<SingleVariantData>());
+    check_can_generate_examples(gs::default::<SingleVariantData>());
 }
 
 #[test]
 fn test_derive_tuple_variants_enum() {
-    check_can_generate_examples(generators::default::<TupleVariants>());
+    check_can_generate_examples(gs::default::<TupleVariants>());
 }
 
 #[test]
 fn test_derive_tuple_variant_generates_both() {
-    find_any(
-        generators::default::<TupleVariants>(),
-        |t: &TupleVariants| matches!(t, TupleVariants::Pair(..)),
-    );
-    find_any(
-        generators::default::<TupleVariants>(),
-        |t: &TupleVariants| matches!(t, TupleVariants::Triple(..)),
-    );
+    find_any(gs::default::<TupleVariants>(), |t: &TupleVariants| {
+        matches!(t, TupleVariants::Pair(..))
+    });
+    find_any(gs::default::<TupleVariants>(), |t: &TupleVariants| {
+        matches!(t, TupleVariants::Triple(..))
+    });
 }
 
 #[test]
 fn test_derive_complex_enum() {
-    check_can_generate_examples(generators::default::<ComplexEnum>());
+    check_can_generate_examples(gs::default::<ComplexEnum>());
 }
 
 #[test]
 fn test_derive_complex_enum_generates_all_variants() {
-    find_any(generators::default::<ComplexEnum>(), |c: &ComplexEnum| {
+    find_any(gs::default::<ComplexEnum>(), |c: &ComplexEnum| {
         matches!(c, ComplexEnum::Unit)
     });
-    find_any(generators::default::<ComplexEnum>(), |c: &ComplexEnum| {
+    find_any(gs::default::<ComplexEnum>(), |c: &ComplexEnum| {
         matches!(c, ComplexEnum::Single(_))
     });
-    find_any(generators::default::<ComplexEnum>(), |c: &ComplexEnum| {
+    find_any(gs::default::<ComplexEnum>(), |c: &ComplexEnum| {
         matches!(c, ComplexEnum::Named { .. })
     });
-    find_any(generators::default::<ComplexEnum>(), |c: &ComplexEnum| {
+    find_any(gs::default::<ComplexEnum>(), |c: &ComplexEnum| {
         matches!(c, ComplexEnum::Multi(..))
     });
 }
 
 #[test]
 fn test_derive_enum_with_nested_types() {
-    check_can_generate_examples(generators::default::<WithNestedTypes>());
+    check_can_generate_examples(gs::default::<WithNestedTypes>());
 }
 
 // ============================================================================
@@ -345,7 +337,7 @@ fn test_derive_enum_variant_generator_named_fields() {
     let g = Shape::default_generator().Circle(
         Shape::default_generator()
             .default_Circle()
-            .radius(generators::floats().min_value(1.0).max_value(10.0)),
+            .radius(gs::floats().min_value(1.0).max_value(10.0)),
     );
     assert_all_examples(g, |s: &Shape| match s {
         Shape::Circle { radius } => *radius >= 1.0 && *radius <= 10.0,
@@ -358,7 +350,7 @@ fn test_derive_enum_variant_generator_single_tuple() {
     let g = MixedEnum::default_generator().WithValue(
         MixedEnum::default_generator()
             .default_WithValue()
-            .value(generators::integers().min_value(0_i32).max_value(100)),
+            .value(gs::integers().min_value(0_i32).max_value(100)),
     );
     assert_all_examples(g, |m: &MixedEnum| match m {
         MixedEnum::WithValue(v) => *v >= 0 && *v <= 100,
@@ -371,7 +363,7 @@ fn test_derive_enum_variant_generator_with_named_fields() {
     let g = MixedEnum::default_generator().WithFields(
         MixedEnum::default_generator()
             .default_WithFields()
-            .x(generators::just(99)),
+            .x(gs::just(99)),
     );
     assert_all_examples(g, |m: &MixedEnum| match m {
         MixedEnum::WithFields { x, .. } => *x == 99,
@@ -385,17 +377,17 @@ fn test_derive_enum_variant_generator_with_named_fields() {
 
 #[test]
 fn test_derive_struct_in_vec() {
-    check_can_generate_examples(generators::vecs(generators::default::<Point>()));
+    check_can_generate_examples(gs::vecs(gs::default::<Point>()));
 }
 
 #[test]
 fn test_derive_struct_in_option() {
-    check_can_generate_examples(generators::optional(generators::default::<Point>()));
+    check_can_generate_examples(gs::optional(gs::default::<Point>()));
 }
 
 #[test]
 fn test_derive_enum_in_vec() {
-    check_can_generate_examples(generators::vecs(generators::default::<Color>()));
+    check_can_generate_examples(gs::vecs(gs::default::<Color>()));
 }
 
 // ============================================================================
@@ -404,7 +396,7 @@ fn test_derive_enum_in_vec() {
 
 #[test]
 fn test_derive_struct_with_map() {
-    let g = generators::default::<Point>().map(|p| Point {
+    let g = gs::default::<Point>().map(|p| Point {
         x: p.x.saturating_abs(),
         y: p.y.saturating_abs(),
     });
@@ -413,13 +405,13 @@ fn test_derive_struct_with_map() {
 
 #[test]
 fn test_derive_struct_with_filter() {
-    let g = generators::default::<Point>().filter(|p| p.x > 0);
+    let g = gs::default::<Point>().filter(|p| p.x > 0);
     assert_all_examples(g, |p: &Point| p.x > 0);
 }
 
 #[test]
 fn test_derive_enum_with_filter() {
-    let g = generators::default::<Color>().filter(|c| *c != Color::Red);
+    let g = gs::default::<Color>().filter(|c| *c != Color::Red);
     assert_all_examples(g, |c: &Color| *c != Color::Red);
 }
 
@@ -442,14 +434,14 @@ fn test_derive_enum_default_generator_trait() {
 
 #[test]
 fn test_derive_struct_usable_via_default_function() {
-    // generators::default::<T>() should work for derived types
-    let g = generators::default::<Point>();
+    // gs::default::<T>() should work for derived types
+    let g = gs::default::<Point>();
     check_can_generate_examples(g);
 }
 
 #[test]
 fn test_derive_enum_usable_via_default_function() {
-    let g = generators::default::<Color>();
+    let g = gs::default::<Color>();
     check_can_generate_examples(g);
 }
 
@@ -459,7 +451,7 @@ fn test_derive_enum_usable_via_default_function() {
 
 #[hegel::test]
 fn test_derive_struct_in_hegel_test(tc: hegel::TestCase) {
-    let p: Point = tc.draw(generators::default());
+    let p: Point = tc.draw(gs::default());
     // Just verify it generates without panicking
     let _ = p.x;
     let _ = p.y;
@@ -467,14 +459,14 @@ fn test_derive_struct_in_hegel_test(tc: hegel::TestCase) {
 
 #[hegel::test]
 fn test_derive_enum_in_hegel_test(tc: hegel::TestCase) {
-    let c: Color = tc.draw(generators::default());
+    let c: Color = tc.draw(gs::default());
     // Verify it's one of the valid variants
     assert!(matches!(c, Color::Red | Color::Green | Color::Blue));
 }
 
 #[hegel::test]
 fn test_derive_complex_in_hegel_test(tc: hegel::TestCase) {
-    let m: MixedEnum = tc.draw(generators::default());
+    let m: MixedEnum = tc.draw(gs::default());
     match m {
         MixedEnum::Empty => {}
         MixedEnum::WithValue(_v) => {}
@@ -488,7 +480,7 @@ fn test_derive_complex_in_hegel_test(tc: hegel::TestCase) {
 
 #[hegel::test]
 fn test_derive_nested_structs(tc: hegel::TestCase) {
-    let w: WithNested = tc.draw(generators::default());
+    let w: WithNested = tc.draw(gs::default());
     let _ = w.point.x;
     let _ = w.point.y;
     let _ = w.label;
@@ -496,11 +488,8 @@ fn test_derive_nested_structs(tc: hegel::TestCase) {
 
 #[test]
 fn test_derive_nested_struct_with_custom_inner() {
-    let g = WithNested::default_generator().point(
-        Point::default_generator()
-            .x(generators::just(0))
-            .y(generators::just(0)),
-    );
+    let g = WithNested::default_generator()
+        .point(Point::default_generator().x(gs::just(0)).y(gs::just(0)));
     assert_all_examples(g, |w: &WithNested| w.point.x == 0 && w.point.y == 0);
 }
 
@@ -512,27 +501,21 @@ fn test_derive_nested_struct_with_custom_inner() {
 fn test_derive_struct_generator_is_send_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
     // The boxed generator from default() should be Send + Sync
-    let g = generators::default::<Point>();
+    let g = gs::default::<Point>();
     assert_send_sync::<hegel::generators::BoxedGenerator<'static, Point>>();
     check_can_generate_examples(g);
 }
 
 #[test]
 fn test_derive_struct_builder_chaining_order_irrelevant() {
-    let g1 = Point::default_generator()
-        .x(generators::just(1))
-        .y(generators::just(2));
-    let g2 = Point::default_generator()
-        .y(generators::just(2))
-        .x(generators::just(1));
+    let g1 = Point::default_generator().x(gs::just(1)).y(gs::just(2));
+    let g2 = Point::default_generator().y(gs::just(2)).x(gs::just(1));
     assert_all_examples(g1, |p: &Point| p.x == 1 && p.y == 2);
     assert_all_examples(g2, |p: &Point| p.x == 1 && p.y == 2);
 }
 
 #[test]
 fn test_derive_struct_override_field_twice_takes_last() {
-    let g = Point::default_generator()
-        .x(generators::just(1))
-        .x(generators::just(99));
+    let g = Point::default_generator().x(gs::just(1)).x(gs::just(99));
     assert_all_examples(g, |p: &Point| p.x == 99);
 }

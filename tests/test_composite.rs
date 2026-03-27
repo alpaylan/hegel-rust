@@ -2,17 +2,17 @@ mod common;
 
 use common::project::TempRustProject;
 use hegel::TestCase;
-use hegel::generators::integers;
+use hegel::generators as gs;
 
 #[test]
 fn test_successful_expansion() {
     let code = r#"
-use hegel::generators::integers;
+use hegel::generators as gs;
 use hegel::TestCase;
 
 #[hegel::composite]
 fn composite_integer_generator(tc: TestCase, n: i32) -> i32 {
-    tc.draw(integers::<i32>()) + n
+    tc.draw(gs::integers::<i32>()) + n
 }
 
 fn main() {}
@@ -24,12 +24,12 @@ fn main() {}
 #[test]
 fn test_missing_return_type() {
     let code = r#"
-use hegel::generators::integers;
+use hegel::generators as gs;
 use hegel::TestCase;
 
 #[hegel::composite]
 fn composite_integer_generator(tc: TestCase, n: i32) {
-    tc.draw(integers::<i32>()) + n
+    tc.draw(gs::integers::<i32>()) + n
 }
 
 fn main() {}
@@ -77,7 +77,7 @@ fn main() {}
 
 #[hegel::composite]
 fn composite_integer_generator(tc: TestCase, lower: i32, upper: i32, offset: i32) -> i32 {
-    let x = tc.draw(integers::<i32>().min_value(lower).max_value(upper));
+    let x = tc.draw(gs::integers::<i32>().min_value(lower).max_value(upper));
     x + offset
 }
 

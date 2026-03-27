@@ -11,7 +11,7 @@
 //! Example:
 //! ```rust
 //! use hegel::TestCase;
-//! use hegel::generators::integers;
+//! use hegel::generators as gs;
 //!
 //! struct IntegerStack {
 //!     stack: Vec<i32>,
@@ -21,7 +21,7 @@
 //! impl IntegerStack {
 //!     #[rule]
 //!     fn push(&mut self, tc: TestCase) {
-//!         let integers = integers::<i32>;
+//!         let integers = gs::integers::<i32>;
 //!         let element = tc.draw(integers());
 //!         self.stack.push(element);
 //!     }
@@ -33,7 +33,7 @@
 //!
 //!     #[rule]
 //!     fn pop_push(&mut self, tc: TestCase) {
-//!         let integers = integers::<i32>;
+//!         let integers = gs::integers::<i32>;
 //!         let element = tc.draw(integers());
 //!         let initial = self.stack.clone();
 //!         self.stack.push(element);
@@ -81,22 +81,6 @@ impl<M> Rule<M> {
         Rule {
             name: name.to_string(),
             apply,
-        }
-    }
-}
-
-/// An invariant that is checked after each successful rule application.
-pub struct Invariant<M: ?Sized> {
-    pub name: String,
-    pub check: fn(&M, TestCase),
-}
-
-impl<M> Invariant<M> {
-    /// Create a new invariant with a name and a check function.
-    pub fn new(name: &str, check: fn(&M, TestCase)) -> Self {
-        Invariant {
-            name: name.to_string(),
-            check,
         }
     }
 }
@@ -192,7 +176,7 @@ pub trait StateMachine {
     /// The rules (actions) that can be applied to this state machine.
     fn rules(&self) -> Vec<Rule<Self>>;
     /// Invariants checked after each successful rule application.
-    fn invariants(&self) -> Vec<Invariant<Self>>;
+    fn invariants(&self) -> Vec<Rule<Self>>;
 }
 
 // TODO: factor out (shared with runner.rs)
@@ -206,11 +190,11 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
     }
 }
 
-fn check_invariants(m: &impl StateMachine, tc: &TestCase) {
+fn check_invariants(m: &mut impl StateMachine, tc: &TestCase) {
     let invariants = m.invariants();
     for invariant in invariants {
         let inv_tc = tc.child(2);
-        (invariant.check)(m, inv_tc);
+        (invariant.apply)(m, inv_tc);
     }
 }
 
@@ -224,7 +208,7 @@ pub fn run(mut m: impl StateMachine, tc: TestCase) {
     let rule_index = integers::<usize>().min_value(0).max_value(rules.len() - 1);
 
     tc.note("Initial invariant check.");
-    check_invariants(&m, &tc);
+    check_invariants(&mut m, &tc);
 
     // We generate an unbounded integer as the step cap that hypothesis actually sees. This means
     // we almost always run the maximum amount of steps, but allows us the possibility of shrinking
@@ -254,7 +238,7 @@ pub fn run(mut m: impl StateMachine, tc: TestCase) {
         match result {
             Ok(()) => {
                 steps_run_successfully += 1;
-                check_invariants(&m, &tc);
+                check_invariants(&mut m, &tc);
             }
             Err(e) => {
                 let msg = panic_message(&e);

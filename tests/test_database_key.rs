@@ -20,7 +20,7 @@ fn test_database_key_replays_failure() {
 
     let test_code = format!(
         r#"
-use hegel::generators;
+use hegel::generators as gs;
 use std::io::Write;
 
 fn record_test_case(label: &str, n: i64) {{
@@ -35,14 +35,14 @@ fn record_test_case(label: &str, n: i64) {{
 
 #[hegel::test(database = Some("{db_str}".to_string()))]
 fn test_1(tc: hegel::TestCase) {{
-    let n: i64 = tc.draw(generators::integers());
+    let n: i64 = tc.draw(gs::integers());
     record_test_case("test_1", n);
     assert!(n < 1_000_000);
 }}
 
 #[hegel::test(database = Some("{db_str}".to_string()))]
 fn test_2(tc: hegel::TestCase) {{
-    let n: i64 = tc.draw(generators::integers());
+    let n: i64 = tc.draw(gs::integers());
     record_test_case("test_2", n);
     assert!(n < 1_000_000);
 }}

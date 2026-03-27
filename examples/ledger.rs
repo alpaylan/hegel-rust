@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 
 use hegel::TestCase;
-use hegel::generators::{integers, text};
+use hegel::generators as gs;
 use hegel::stateful::{Variables, variables};
 use std::collections::HashMap;
 
@@ -48,7 +48,7 @@ struct LedgerTest {
 impl LedgerTest {
     #[rule]
     fn create_account(&mut self, tc: TestCase) {
-        let account = tc.draw(text().min_size(1));
+        let account = tc.draw(gs::text().min_size(1));
         tc.note(&format!("create account '{}'", account.clone()));
         self.accounts.add(account);
     }
@@ -56,7 +56,7 @@ impl LedgerTest {
     #[rule]
     fn credit(&mut self, tc: TestCase) {
         let account = self.accounts.draw().clone();
-        let amount = tc.draw(integers::<i64>().min_value(0).max_value(LIMIT));
+        let amount = tc.draw(gs::integers::<i64>().min_value(0).max_value(LIMIT));
         tc.note(&format!("credit '{}' with {}", account.clone(), amount));
         self.ledger.credit(account, amount);
     }
@@ -65,7 +65,7 @@ impl LedgerTest {
     fn transfer(&mut self, tc: TestCase) {
         let from = self.accounts.draw().clone();
         let to = self.accounts.draw().clone();
-        let amount = tc.draw(integers::<i64>().min_value(0).max_value(LIMIT));
+        let amount = tc.draw(gs::integers::<i64>().min_value(0).max_value(LIMIT));
         tc.note(&format!(
             "transfer '{}' from {} to {}",
             amount,
@@ -76,7 +76,7 @@ impl LedgerTest {
     }
 
     #[invariant]
-    fn nonnegative_balances(&self, _: TestCase) {
+    fn nonnegative_balances(&mut self, _: TestCase) {
         for (_account, balance) in &self.ledger.balances {
             assert!(*balance >= 0);
         }

@@ -3,7 +3,7 @@ members = [".", "hegel-macros"]
 
 [package]
 name = "hegeltest"
-version = "0.2.6"
+version = "0.3.2"
 edition = "2024"
 # if you bump this, also bump ci.yml and hegel-macros/Cargo.toml
 rust-version = "1.86"
@@ -37,7 +37,7 @@ paste = "1.0"
 tempfile = "3.0"
 ciborium = "0.2.2"
 crc32fast = "1.4"
-hegeltest-macros = { version = "=0.2.6", path = "hegel-macros" }
+hegeltest-macros = { version = "=0.3.2", path = "hegel-macros" }
 # optional feature dependencies
 rand = { version = "0.9", optional = true }
 serde_json = { version = "1.0.61", optional = true }
@@ -54,5 +54,7 @@ antithesis = ["dep:serde_json"]
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+# -D warnings means "deny warnings", which actually means "turn warnings into errors". Have
+# we mentioned naming things is hard?
+rustdoc-args = ["--cfg", "docsrs", "-D", "warnings"]
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]

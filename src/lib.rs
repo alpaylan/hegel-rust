@@ -23,11 +23,11 @@
 //!
 //! ```no_run
 //! use hegel::TestCase;
-//! use hegel::generators::integers;
+//! use hegel::generators as gs;
 //!
 //! #[hegel::test]
 //! fn test_integer_self_equality(tc: TestCase) {
-//!     let n = tc.draw(integers::<i32>());
+//!     let n = tc.draw(gs::integers::<i32>());
 //!     assert_eq!(n, n); // integers should always be equal to themselves
 //! }
 //! ```
@@ -43,10 +43,10 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::integers;
+//! # use hegel::generators as gs;
 //! #[hegel::test]
 //! fn test_integers_always_below_50(tc: TestCase) {
-//!     let n = tc.draw(integers::<i32>());
+//!     let n = tc.draw(gs::integers::<i32>());
 //!     assert!(n < 50); // this will fail!
 //! }
 //! ```
@@ -60,10 +60,10 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::integers;
+//! # use hegel::generators as gs;
 //! #[hegel::test]
 //! fn test_bounded_integers_always_below_50(tc: TestCase) {
-//!     let n = tc.draw(integers::<i32>()
+//!     let n = tc.draw(gs::integers::<i32>()
 //!         .min_value(0)
 //!         .max_value(49));
 //!     assert!(n < 50);
@@ -84,13 +84,13 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! use hegel::generators::{integers, vecs};
+//! use hegel::generators as gs;
 //!
 //! #[hegel::test]
 //! fn test_append_increases_length(tc: TestCase) {
-//!     let mut vector = tc.draw(vecs(integers::<i32>()));
+//!     let mut vector = tc.draw(gs::vecs(gs::integers::<i32>()));
 //!     let initial_length = vector.len();
-//!     vector.push(tc.draw(integers::<i32>()));
+//!     vector.push(tc.draw(gs::integers::<i32>()));
 //!     assert!(vector.len() > initial_length);
 //! }
 //! ```
@@ -103,7 +103,7 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::{integers, text};
+//! # use hegel::generators as gs;
 //! #[derive(Debug)]
 //! struct Person {
 //!     age: i32,
@@ -112,8 +112,8 @@
 //!
 //! #[hegel::composite]
 //! fn generate_person(tc: TestCase) -> Person {
-//!     let age = tc.draw(integers::<i32>());
-//!     let name = tc.draw(text());
+//!     let age = tc.draw(gs::integers::<i32>());
+//!     let name = tc.draw(gs::text());
 //!     Person { age, name }
 //! }
 //! ```
@@ -123,7 +123,7 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::{integers, text, booleans};
+//! # use hegel::generators as gs;
 //! #[derive(Debug)]
 //! struct Person {
 //!     age: i32,
@@ -133,10 +133,10 @@
 //!
 //! #[hegel::composite]
 //! fn generate_person(tc: TestCase) -> Person {
-//!     let age = tc.draw(integers::<i32>());
-//!     let name = tc.draw(text());
+//!     let age = tc.draw(gs::integers::<i32>());
+//!     let name = tc.draw(gs::text());
 //!     let driving_license = if age >= 18 {
-//!         tc.draw(booleans())
+//!         tc.draw(gs::booleans())
 //!     } else {
 //!          false
 //!     };
@@ -150,11 +150,11 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::integers;
+//! # use hegel::generators as gs;
 //! #[hegel::test]
 //! fn test_with_notes(tc: TestCase) {
-//!     let x = tc.draw(integers::<i32>());
-//!     let y = tc.draw(integers::<i32>());
+//!     let x = tc.draw(gs::integers::<i32>());
+//!     let y = tc.draw(gs::integers::<i32>());
 //!     tc.note(&format!("x + y = {}, y + x = {}", x + y, y + x));
 //!     assert_eq!(x + y, y + x);
 //! }
@@ -169,10 +169,10 @@
 //!
 //! ```no_run
 //! # use hegel::TestCase;
-//! # use hegel::generators::integers;
+//! # use hegel::generators as gs;
 //! #[hegel::test(test_cases = 500)]
 //! fn test_integers_many(tc: TestCase) {
-//!     let n = tc.draw(integers::<i32>());
+//!     let n = tc.draw(gs::integers::<i32>());
 //!     assert_eq!(n, n);
 //! }
 //! ```

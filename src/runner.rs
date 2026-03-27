@@ -537,11 +537,11 @@ impl Settings {
     ///
     /// ```no_run
     /// use hegel::{HealthCheck, Verbosity};
-    /// use hegel::generators;
+    /// use hegel::generators as gs;
     ///
     /// #[hegel::test(suppress_health_check = [HealthCheck::FilterTooMuch, HealthCheck::TooSlow])]
     /// fn my_test(tc: hegel::TestCase) {
-    ///     let n: i32 = tc.draw(generators::integers());
+    ///     let n: i32 = tc.draw(gs::integers());
     ///     tc.assume(n > 0);
     /// }
     /// ```

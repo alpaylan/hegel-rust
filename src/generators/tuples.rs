@@ -8,19 +8,20 @@ use std::marker::PhantomData;
 /// # Examples
 ///
 /// ```no_run
-/// use hegel::generators::{tuples, integers, booleans, text};
+/// use hegel::generators as gs;
+/// use hegel::tuples;
 ///
 /// // 0-tuple (unit)
 /// let gen0 = tuples!();
 ///
 /// // 1-tuple
-/// let gen1 = tuples!(integers::<i32>());
+/// let gen1 = tuples!(gs::integers::<i32>());
 ///
 /// // 2-tuple
-/// let gen2 = tuples!(integers::<i32>(), booleans());
+/// let gen2 = tuples!(gs::integers::<i32>(), gs::booleans());
 ///
 /// // 3-tuple
-/// let gen3 = tuples!(integers::<i32>(), booleans(), text());
+/// let gen3 = tuples!(gs::integers::<i32>(), gs::booleans(), gs::text());
 /// ```
 #[macro_export]
 macro_rules! tuples {

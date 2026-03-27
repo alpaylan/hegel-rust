@@ -3,36 +3,36 @@ mod common;
 use common::project::TempRustProject;
 use common::utils::expect_panic;
 use hegel::TestCase;
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 fn test_basic_usage(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[hegel::test(test_cases = 10)]
 fn test_with_named_arg(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[hegel::test(hegel::Settings::new().test_cases(10))]
 fn test_with_positional_settings(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[hegel::test(hegel::Settings::new(), test_cases = 10)]
 fn test_with_positional_and_named(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[hegel::test(test_cases = 10, derandomize = true)]
 fn test_with_multiple_named_args(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[hegel::test(seed = Some(42))]
 fn test_with_seed(tc: TestCase) {
-    tc.draw(generators::booleans());
+    tc.draw(gs::booleans());
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn test_database_persists_failing_examples() {
 #[test]
 fn test_duplicate_test_attribute_compile_error() {
     let code = r#"
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 #[test]
@@ -77,7 +77,7 @@ fn main(tc: hegel::TestCase) {}
 fn test_params_compile_error() {
     // Zero parameters should be rejected
     let code_zero = r#"
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 fn main() {
@@ -90,7 +90,7 @@ fn main() {
 
     // Two parameters should be rejected
     let code_two = r#"
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::test]
 fn main(tc: hegel::TestCase, x: bool) {

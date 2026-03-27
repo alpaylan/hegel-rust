@@ -23,18 +23,18 @@ Hegel requires [uv](https://docs.astral.sh/uv/) on your PATH, which we use to in
 Here's a quick example of how to write a Hegel test:
 
 ```rust
-use hegel::generators::integers;
+use hegel::generators as gs;
 use hegel::TestCase;
 
 #[hegel::test]
 fn test_addition_commutative(tc: TestCase) {
-    let x = tc.draw(integers::<i32>());
-    let y = tc.draw(integers::<i32>());
+    let x = tc.draw(gs::integers::<i32>());
+    let y = tc.draw(gs::integers::<i32>());
     assert_eq!(x + y, y + x);
 }
 ```
 
-This test will fail! Integer addition panics on overflow. Hegel will produce a minimal failing test case for us:
+This test will fail when run with `cargo test`! Integer addition panics on overflow in the `test` profile. Hegel will produce a minimal failing test case for us:
 
 ```
 Draw 1: 1
@@ -49,8 +49,8 @@ For a passing test, try:
 #[hegel::test]
 fn test_wrapping_addition_commutative(tc: TestCase) {
     let add = i32::wrapping_add;
-    let x = tc.draw(integers::<i32>());
-    let y = tc.draw(integers::<i32>());
+    let x = tc.draw(gs::integers::<i32>());
+    let y = tc.draw(gs::integers::<i32>());
     assert_eq!(add(x, y), add(y, x));
 }
 ```

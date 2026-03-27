@@ -2,7 +2,7 @@ mod common;
 
 use common::project::TempRustProject;
 use hegel::TestCase;
-use hegel::generators::{integers, vecs};
+use hegel::generators as gs;
 use hegel::stateful::{Variables, variables};
 
 #[test]
@@ -41,7 +41,7 @@ impl Linear {
     }
 
     #[invariant]
-    fn upper_bound(&self, _tc: TestCase) {
+    fn upper_bound(&mut self, _tc: TestCase) {
         assert!(self.state < 4);
     }
 }
@@ -78,8 +78,8 @@ impl TestConsumeMachine {
 
 #[hegel::test]
 fn test_consume(tc: TestCase) {
-    let ints = integers::<i32>;
-    let elements = tc.draw(vecs(ints()).unique(true));
+    let ints = gs::integers::<i32>;
+    let elements = tc.draw(gs::vecs(ints()).unique(true));
     tc.assume(!elements.is_empty());
     let mut bundle = variables(&tc);
     for element in elements.clone() {
@@ -110,8 +110,8 @@ impl TestDrawDomainMachine {
 
 #[hegel::test]
 fn test_draw_domain(tc: TestCase) {
-    let ints = integers::<i32>;
-    let elements = tc.draw(vecs(ints()));
+    let ints = gs::integers::<i32>;
+    let elements = tc.draw(gs::vecs(ints()));
     tc.assume(!elements.is_empty());
     let mut bundle = variables(&tc);
     for element in elements.clone() {

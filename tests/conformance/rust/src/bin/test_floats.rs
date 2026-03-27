@@ -1,4 +1,4 @@
-use hegel::generators;
+use hegel::generators as gs;
 use hegel::{Hegel, Settings};
 use hegel_conformance::{get_test_cases, write};
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ fn main() {
     });
 
     Hegel::new(move |tc| {
-        let mut g = generators::floats::<f64>();
+        let mut g = gs::floats::<f64>();
 
         if let Some(min) = params.min_value {
             g = g.min_value(min);

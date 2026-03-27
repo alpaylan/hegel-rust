@@ -1,10 +1,10 @@
 use crate::common::utils::minimal;
-use hegel::generators;
+use hegel::generators as gs;
 
 #[hegel::composite]
 fn int_pair(tc: hegel::TestCase, lo: i64, hi: i64) -> (i64, i64) {
-    let a = tc.draw(generators::integers::<i64>().min_value(lo).max_value(hi));
-    let b = tc.draw(generators::integers::<i64>().min_value(lo).max_value(hi));
+    let a = tc.draw(gs::integers::<i64>().min_value(lo).max_value(hi));
+    let b = tc.draw(gs::integers::<i64>().min_value(lo).max_value(hi));
     (a, b)
 }
 
@@ -18,11 +18,11 @@ fn test_sum_of_pair() {
 
 #[hegel::composite]
 fn separated_sum(tc: hegel::TestCase) -> (i64, i64) {
-    let n1 = tc.draw(generators::integers::<i64>().min_value(0).max_value(1000));
-    let _ = tc.draw(generators::text());
-    let _ = tc.draw(generators::booleans());
-    let _ = tc.draw(generators::integers::<i64>());
-    let n2 = tc.draw(generators::integers::<i64>().min_value(0).max_value(1000));
+    let n1 = tc.draw(gs::integers::<i64>().min_value(0).max_value(1000));
+    let _ = tc.draw(gs::text());
+    let _ = tc.draw(gs::booleans());
+    let _ = tc.draw(gs::integers::<i64>());
+    let n2 = tc.draw(gs::integers::<i64>().min_value(0).max_value(1000));
     (n1, n2)
 }
 
@@ -37,7 +37,7 @@ fn test_sum_of_pair_separated() {
 #[test]
 fn test_minimize_dict_of_booleans() {
     let result = minimal(
-        generators::tuples!(generators::booleans(), generators::booleans()),
+        gs::tuples!(gs::booleans(), gs::booleans()),
         |x: &(bool, bool)| x.0 || x.1,
     );
     assert!(!(result.0 && result.1));
@@ -46,8 +46,8 @@ fn test_minimize_dict_of_booleans() {
 
 #[hegel::composite]
 fn int_struct(tc: hegel::TestCase) -> (i64, i64) {
-    let a = tc.draw(generators::integers::<i64>());
-    let b = tc.draw(generators::integers::<i64>());
+    let a = tc.draw(gs::integers::<i64>());
+    let b = tc.draw(gs::integers::<i64>());
     (a, b)
 }
 

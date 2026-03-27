@@ -76,13 +76,13 @@ impl RngCore for HegelRandom {
 /// Creates a generator for random number generators.
 ///
 /// ```no_run
-/// use hegel::generators::randoms;
+/// use hegel::generators as gs;
 /// use rand::Rng;
 /// use rand::prelude::{IndexedRandom, SliceRandom};
 ///
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
-///     let mut rng = tc.draw(randoms());
+///     let mut rng = tc.draw(gs::randoms());
 ///
 ///     let a: i32 = rng.random_range(1..=100);
 ///     let b: bool = rng.random();

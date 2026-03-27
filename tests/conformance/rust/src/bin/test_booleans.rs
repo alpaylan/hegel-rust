@@ -1,4 +1,4 @@
-use hegel::generators;
+use hegel::generators as gs;
 use hegel::{Hegel, Settings};
 use hegel_conformance::{get_test_cases, write};
 use serde::Serialize;
@@ -12,7 +12,7 @@ fn main() {
     // booleans takes no params, so we ignore argv[1]
 
     Hegel::new(|tc| {
-        let value = tc.draw(generators::booleans());
+        let value = tc.draw(gs::booleans());
         write(&Metrics { value });
     })
     .settings(Settings::new().test_cases(get_test_cases()))

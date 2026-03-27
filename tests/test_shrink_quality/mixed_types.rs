@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::common::utils::minimal;
-use hegel::generators::{self, Generator};
+use hegel::generators::{self as gs, Generator};
 
 // one_of with same-type generators (integers only).
 #[test]
@@ -9,8 +9,8 @@ fn test_minimize_one_of_integers() {
     for _ in 0..10 {
         let result = minimal(
             hegel::one_of!(
-                generators::integers::<i64>(),
-                generators::integers::<i64>().min_value(100).max_value(200),
+                gs::integers::<i64>(),
+                gs::integers::<i64>().min_value(100).max_value(200),
             ),
             |_| true,
         );
@@ -31,9 +31,9 @@ fn test_minimize_one_of_mixed() {
     for _ in 0..10 {
         let result = minimal(
             hegel::one_of!(
-                generators::integers::<i64>().map(IntOrTextOrBool::Int),
-                generators::text().map(IntOrTextOrBool::Text),
-                generators::booleans().map(IntOrTextOrBool::Bool)
+                gs::integers::<i64>().map(IntOrTextOrBool::Int),
+                gs::text().map(IntOrTextOrBool::Text),
+                gs::booleans().map(IntOrTextOrBool::Bool)
             ),
             |_| true,
         );
@@ -57,9 +57,9 @@ enum IntOrText {
 #[test]
 fn test_minimize_mixed_list() {
     let result = minimal(
-        generators::vecs(hegel::one_of!(
-            generators::integers::<i64>().map(IntOrText::Int),
-            generators::text().map(IntOrText::Text)
+        gs::vecs(hegel::one_of!(
+            gs::integers::<i64>().map(IntOrText::Int),
+            gs::text().map(IntOrText::Text)
         )),
         |x: &Vec<IntOrText>| x.len() >= 10,
     );
@@ -85,18 +85,18 @@ enum BoolOrText {
 
 #[hegel::composite]
 fn bool_or_text_via_flatmap(tc: hegel::TestCase) -> BoolOrText {
-    let b: bool = tc.draw(generators::booleans());
+    let b: bool = tc.draw(gs::booleans());
     if b {
-        BoolOrText::Bool(tc.draw(generators::booleans()))
+        BoolOrText::Bool(tc.draw(gs::booleans()))
     } else {
-        BoolOrText::Text(tc.draw(generators::text()))
+        BoolOrText::Text(tc.draw(gs::text()))
     }
 }
 
 #[test]
 fn test_mixed_list_flatmap() {
     let result = minimal(
-        generators::vecs(bool_or_text_via_flatmap()),
+        gs::vecs(bool_or_text_via_flatmap()),
         |ls: &Vec<BoolOrText>| {
             let bools = ls
                 .iter()
@@ -122,8 +122,8 @@ fn test_mixed_list_flatmap() {
 fn test_one_of_slip() {
     let result = minimal(
         hegel::one_of!(
-            generators::integers::<i64>().min_value(101).max_value(200),
-            generators::integers::<i64>().min_value(0).max_value(100),
+            gs::integers::<i64>().min_value(101).max_value(200),
+            gs::integers::<i64>().min_value(0).max_value(100),
         ),
         |_| true,
     );

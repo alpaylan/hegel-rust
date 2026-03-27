@@ -77,11 +77,11 @@ pub(crate) struct TestCaseLocalData {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::generators;
+/// use hegel::generators as gs;
 ///
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
-///     let x: i32 = tc.draw(generators::integers());
+///     let x: i32 = tc.draw(gs::integers());
 ///     tc.assume(x > 0);
 ///     tc.note(&format!("x = {}", x));
 /// }
@@ -140,12 +140,12 @@ impl TestCase {
     /// # Example
     ///
     /// ```no_run
-    /// use hegel::generators;
+    /// use hegel::generators as gs;
     ///
     /// #[hegel::test]
     /// fn my_test(tc: hegel::TestCase) {
-    ///     let x: i32 = tc.draw(generators::integers());
-    ///     let s: String = tc.draw(generators::text());
+    ///     let x: i32 = tc.draw(gs::integers());
+    ///     let s: String = tc.draw(gs::text());
     /// }
     /// ```
     pub fn draw<T: std::fmt::Debug>(&self, generator: impl Generator<T>) -> T {
@@ -169,11 +169,11 @@ impl TestCase {
     /// # Example
     ///
     /// ```no_run
-    /// use hegel::generators;
+    /// use hegel::generators as gs;
     ///
     /// #[hegel::test]
     /// fn my_test(tc: hegel::TestCase) {
-    ///     let age: u32 = tc.draw(generators::integers());
+    ///     let age: u32 = tc.draw(gs::integers());
     ///     tc.assume(age >= 18);
     /// }
     /// ```
@@ -190,11 +190,11 @@ impl TestCase {
     /// # Example
     ///
     /// ```no_run
-    /// use hegel::generators;
+    /// use hegel::generators as gs;
     ///
     /// #[hegel::test]
     /// fn my_test(tc: hegel::TestCase) {
-    ///     let x: i32 = tc.draw(generators::integers());
+    ///     let x: i32 = tc.draw(gs::integers());
     ///     tc.note(&format!("Generated x = {}", x));
     /// }
     /// ```

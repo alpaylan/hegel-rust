@@ -131,13 +131,13 @@ pub fn one_of<T>(generators: Vec<BoxedGenerator<'_, T>>) -> OneOfGenerator<'_, T
 /// # Example
 ///
 /// ```no_run
-/// use hegel::generators;
+/// use hegel::generators as gs;
 ///
 /// #[hegel::test]
 /// fn my_test(tc: &hegel::TestCase) {
 ///     let value: i32 = tc.draw(hegel::one_of!(
-///         generators::integers::<i32>().min_value(0).max_value(10),
-///         generators::integers::<i32>().min_value(100).max_value(110),
+///         gs::integers::<i32>().min_value(0).max_value(10),
+///         gs::integers::<i32>().min_value(100).max_value(110),
 ///     ));
 /// }
 /// ```

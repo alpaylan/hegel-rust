@@ -22,7 +22,7 @@ pub trait DefaultGenerator: Sized {
 /// # Example
 ///
 /// ```no_run
-/// use hegel::generators::{self, DefaultGenerator};
+/// use hegel::generators::{self as gs, DefaultGenerator};
 /// use hegel::DefaultGenerator;
 ///
 /// #[derive(DefaultGenerator, Debug)]
@@ -34,11 +34,11 @@ pub trait DefaultGenerator: Sized {
 /// #[hegel::test]
 /// fn my_test(tc: hegel::TestCase) {
 ///     // Generate with defaults
-///     let person: Person = tc.draw(generators::default::<Person>());
+///     let person: Person = tc.draw(gs::default::<Person>());
 ///
 ///     // Customize field generators
-///     let person: Person = tc.draw(generators::default::<Person>()
-///         .age(generators::integers().min_value(0).max_value(120)));
+///     let person: Person = tc.draw(gs::default::<Person>()
+///         .age(gs::integers().min_value(0).max_value(120)));
 /// }
 /// ```
 pub fn default<T: DefaultGenerator>() -> BoxedGenerator<'static, T> {
@@ -217,7 +217,7 @@ where
 ///
 /// // In your tests:
 /// use hegel::derive_generator;
-/// use hegel::generators::{self, DefaultGenerator, Generator};
+/// use hegel::generators::{self as gs, DefaultGenerator, Generator};
 /// use production_crate::Person;
 ///
 /// derive_generator!(Person {
@@ -226,9 +226,9 @@ where
 /// });
 ///
 /// // default now supports Person:
-/// let generator = generators::default::<Person>()
-///     .name(generators::from_regex("[A-Z][a-z]+"))
-///     .age(generators::integers::<u32>().min_value(0).max_value(120));
+/// let generator = gs::default::<Person>()
+///     .name(gs::from_regex("[A-Z][a-z]+"))
+///     .age(gs::integers::<u32>().min_value(0).max_value(120));
 ///
 /// let person: Person = tc.draw(generator);
 /// ```
