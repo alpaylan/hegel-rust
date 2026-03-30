@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.7 - 2026-03-30
+
+Add generator for Duration
+
 ## 0.3.6 - 2026-03-30
 
 This patch fixes `#[state_machine]` not forwarding attributes on `#[rule]` and `#[invariant]` ([#151](https://github.com/hegeldev/hegel-rust/issues/151)). For example, the following rule is now correctly conditional on the `tokio1` feature:
