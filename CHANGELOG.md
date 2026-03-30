@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.6 - 2026-03-30
+
+This patch fixes `#[state_machine]` not forwarding attributes on `#[rule]` and `#[invariant]` ([#151](https://github.com/hegeldev/hegel-rust/issues/151)). For example, the following rule is now correctly conditional on the `tokio1` feature:
+
+```rust
+#[hegel::state_machine]
+impl A {
+    #[cfg(feature = "tokio1")]
+    #[rule]
+    fn f(&mut self, _tc: TestCase) {}
+}
+```
+
 ## 0.3.5 - 2026-03-30
 
 This patch fixes being unable to define `#[hegel::state_machine]` with explicit lifetime or type parameters ([#156](https://github.com/hegeldev/hegel-rust/issues/156)).
