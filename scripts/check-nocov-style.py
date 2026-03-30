@@ -1,7 +1,4 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.10"
-# ///
+#!/usr/bin/env python3
 """Check that // nocov annotations follow style rules.
 
 1. No 3+ consecutive inline // nocov lines (use // nocov start/end blocks).
