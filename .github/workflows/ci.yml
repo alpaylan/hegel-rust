@@ -33,7 +33,7 @@ jobs:
 
       - name: Check lint
         run: just check-lint
-      - name: Check Zizmor
+      - name: Check zizmor
         run: |
           pipx install zizmor==1.23.1
           zizmor --format plain .github/

@@ -93,6 +93,48 @@ fn test_consume(tc: TestCase) {
     hegel::stateful::run(m, tc);
 }
 
+#[test]
+fn test_cfg_attributes_are_copied_to_rules() {
+    // see https://github.com/hegeldev/hegel-rust/issues/151
+    let code = r#"
+use hegel::TestCase;
+
+struct A {
+    count: u32,
+}
+
+#[hegel::state_machine]
+impl A {
+    #[rule]
+    fn increment(&mut self, _tc: TestCase) {
+        self.count += 1;
+    }
+
+    #[cfg(nonexistent_config)]
+    #[rule]
+    fn f1(&mut self, _tc: TestCase) {
+        compile_error!("should be compiled out");
+    }
+
+    #[cfg(nonexistent_config)]
+    #[invariant]
+    fn f2(&mut self, _tc: TestCase) {
+        compile_error!("should be compiled out");
+    }
+}
+
+#[hegel::test]
+fn test_a(tc: TestCase) {
+    let m = A { count: 0 };
+    hegel::stateful::run(m, tc);
+}
+
+fn main() {}
+"#;
+
+    TempRustProject::new().main_file(code).cargo_test(&[]);
+}
+
 struct TestLifetimeMachine<'a> {
     data: &'a [i32],
 }
