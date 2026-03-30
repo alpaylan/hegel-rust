@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5 - 2026-03-30
+
+This patch fixes being unable to define `#[hegel::state_machine]` with explicit lifetime or type parameters ([#156](https://github.com/hegeldev/hegel-rust/issues/156)).
+
 ## 0.3.4 - 2026-03-27
 
 This patch improves documentation and adds scraped examples to the docs.
