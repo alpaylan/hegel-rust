@@ -133,13 +133,11 @@ where
             tc.start_span(labels::SET);
             let mut collection = Collection::new(tc, "composite_set", self.min_size, self.max_size);
             let mut set = HashSet::new();
-            // nocov end
-            // nocov start
             while collection.more() {
                 let element = self.elements.do_draw(tc); // nocov
                 if !set.insert(element) {
+                    collection.reject(Some("duplicate element"));
                     // nocov end
-                    collection.reject(Some("duplicate element")); // nocov
                 }
             }
             // nocov start
@@ -226,8 +224,6 @@ where
             tc.start_span(labels::MAP);
             let mut collection = Collection::new(tc, "composite_map", self.min_size, self.max_size);
             let mut map = HashMap::new();
-            // nocov end
-            // nocov start
             while collection.more() {
                 let key = self.keys.do_draw(tc); // nocov
                 match map.entry(key) {
@@ -235,9 +231,9 @@ where
                         collection.reject(Some("duplicate key")); // nocov
                     }
                     std::collections::hash_map::Entry::Vacant(entry) => {
+                        let value = self.values.do_draw(tc);
+                        entry.insert(value);
                         // nocov end
-                        let value = self.values.do_draw(tc); // nocov
-                        entry.insert(value); // nocov
                     }
                 }
             }
@@ -325,8 +321,8 @@ pub(crate) struct MappedToValue<T, G> {
 impl<T: serde::Serialize, G: Generator<T>> Generator<Value> for MappedToValue<T, G> {
     // nocov start
     fn do_draw(&self, tc: &TestCase) -> Value {
+        crate::cbor_utils::cbor_serialize(&self.inner.do_draw(tc))
         // nocov end
-        crate::cbor_utils::cbor_serialize(&self.inner.do_draw(tc)) // nocov
     }
 
     // nocov start
@@ -334,9 +330,9 @@ impl<T: serde::Serialize, G: Generator<T>> Generator<Value> for MappedToValue<T,
         let inner_basic = self.inner.as_basic()?; // nocov
         let schema = inner_basic.schema().clone(); // nocov
         Some(BasicGenerator::new(schema, move |raw| {
+            let t_val = inner_basic.parse_raw(raw);
+            crate::cbor_utils::cbor_serialize(&t_val)
             // nocov end
-            let t_val = inner_basic.parse_raw(raw); // nocov
-            crate::cbor_utils::cbor_serialize(&t_val) // nocov
         }))
     }
 }
@@ -354,16 +350,16 @@ impl<'a> FixedDictBuilder<'a> {
     // nocov start
     pub fn field<T, G>(mut self, name: &str, generator: G) -> Self
     where
+        G: Generator<T> + Send + Sync + 'a,
+        T: serde::Serialize + 'a,
         // nocov end
-        G: Generator<T> + Send + Sync + 'a, // nocov
-        T: serde::Serialize + 'a,           // nocov
     {
         // nocov start
         let boxed = BoxedGenerator {
             inner: Arc::new(MappedToValue {
+                inner: generator,
+                _phantom: PhantomData,
                 // nocov end
-                inner: generator,      // nocov
-                _phantom: PhantomData, // nocov
             }),
         };
         self.fields.push((name.to_string(), boxed)); // nocov
@@ -374,8 +370,8 @@ impl<'a> FixedDictBuilder<'a> {
     // nocov start
     pub fn build(self) -> FixedDictGenerator<'a> {
         FixedDictGenerator {
+            fields: self.fields,
             // nocov end
-            fields: self.fields, // nocov
         }
     }
 }
@@ -389,8 +385,6 @@ impl Generator<Value> for FixedDictGenerator<'_> {
     // nocov start
     fn do_draw(&self, tc: &TestCase) -> Value {
         if let Some(basic) = self.as_basic() {
-            // nocov end
-            // nocov start
             basic.do_draw(tc)
         } else {
             tc.start_span(labels::FIXED_DICT);
@@ -407,8 +401,6 @@ impl Generator<Value> for FixedDictGenerator<'_> {
 
     // nocov start
     fn as_basic(&self) -> Option<BasicGenerator<'_, Value>> {
-        // nocov end
-        // nocov start
         let basics: Vec<BasicGenerator<'_, Value>> = self
             .fields
             .iter()
@@ -428,9 +420,9 @@ impl Generator<Value> for FixedDictGenerator<'_> {
         // nocov start
         Some(BasicGenerator::new(schema, move |raw| {
             let arr = match raw {
+                Value::Array(arr) => arr,
+                _ => panic!("Expected array from tuple schema, got {:?}", raw),
                 // nocov end
-                Value::Array(arr) => arr, // nocov
-                _ => panic!("Expected array from tuple schema, got {:?}", raw), // nocov
             };
 
             // nocov start
@@ -460,8 +452,8 @@ impl Generator<Value> for FixedDictGenerator<'_> {
 /// ```
 // nocov start
 pub fn fixed_dicts<'a>() -> FixedDictBuilder<'a> {
+    FixedDictBuilder { fields: Vec::new() }
     // nocov end
-    FixedDictBuilder { fields: Vec::new() } // nocov
 }
 
 /// Generator for fixed-size arrays `[T; N]`. Created by [`arrays()`].

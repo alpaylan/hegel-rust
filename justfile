@@ -38,7 +38,10 @@ check-docs:
 docs:
     cargo +nightly docs-rs --open
 
-check-lint: check-format check-clippy
+check-nocov-style:
+    scripts/check-nocov-style.py
+
+check-lint: check-format check-clippy check-nocov-style
 
 check-coverage:
     # requires cargo-llvm-cov and llvm-tools-preview

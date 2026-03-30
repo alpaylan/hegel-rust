@@ -631,67 +631,6 @@ def write_ratchet(nocov: int) -> None:
         f.write("\n")
 
 
-def check_consecutive_nocov() -> int:
-    """Check that no 3+ consecutive lines have inline // nocov.
-
-    Long runs should use // nocov start ... // nocov end blocks instead.
-    Returns 0 if OK, 1 if violations found.
-    """
-    nocov_inline = re.compile(r"//\s*nocov\b")
-    nocov_block = re.compile(r"//\s*nocov\s+(start|end)\b")
-
-    violations: list[tuple[Path, int, int]] = []
-
-    for src_dir in SOURCE_DIRS:
-        if not src_dir.exists():
-            continue
-        for rs_file in sorted(src_dir.rglob("*.rs")):
-            try:
-                in_block = False
-                run_start = -1
-                run_length = 0
-                with rs_file.open() as f:
-                    for i, line in enumerate(f, 1):
-                        if nocov_block.search(line):
-                            if "start" in line:
-                                in_block = True
-                            else:
-                                in_block = False
-                            if run_length >= 3:
-                                violations.append((rs_file, run_start, run_length))
-                            run_length = 0
-                            continue
-
-                        if in_block:
-                            continue
-
-                        if nocov_inline.search(line):
-                            if run_length == 0:
-                                run_start = i
-                            run_length += 1
-                        else:
-                            if run_length >= 3:
-                                violations.append((rs_file, run_start, run_length))
-                            run_length = 0
-
-                if run_length >= 3:
-                    violations.append((rs_file, run_start, run_length))
-            except (OSError, IOError):
-                continue
-
-    if violations:
-        print("\nConsecutive // nocov annotations found:")
-        print("Use // nocov start ... // nocov end blocks instead.\n")
-        for file_path, start, length in violations:
-            try:
-                rel = file_path.relative_to(Path.cwd())
-            except ValueError:
-                rel = file_path
-            print(f"  {rel}:{start}: {length} consecutive lines")
-        return 1
-
-    return 0
-
 
 # ──────────────────────────────────────────────────────────────────────
 # Analysis
@@ -776,21 +715,16 @@ def main() -> int:
     else:
         print("\n100% line coverage -- no uncovered lines at all!")
 
-    # 4. Check for consecutive inline nocov (should use blocks)
-    result = check_consecutive_nocov()
-    if result != 0:
-        return result
-
-    # 5. Cleanup: remove annotations from code that is now covered
+    # 4. Cleanup: remove annotations from code that is now covered
     nocov_removed = cleanup_unnecessary_annotations(coverage)
     if nocov_removed > 0:
         print(f"\nRemoved {nocov_removed} unnecessary // nocov annotations")
 
-    # 6. Count remaining annotations
+    # 5. Count remaining annotations
     nocov_count = count_annotations()
     print(f"\nCoverage annotations: {nocov_count} // nocov")
 
-    # 7. Check ratchet
+    # 6. Check ratchet
     nocov_limit = read_ratchet()
 
     if nocov_count > nocov_limit:

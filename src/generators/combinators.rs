@@ -166,12 +166,10 @@ where
         if let Some(basic) = self.as_basic() {
             basic.do_draw(tc)
         } else {
-            tc.start_span(labels::OPTIONAL); // nocov
-            let is_some: bool = super::generate_from_schema(tc, &cbor_map! {"type" => "boolean"}); // nocov
             // nocov start
+            tc.start_span(labels::OPTIONAL);
+            let is_some: bool = super::generate_from_schema(tc, &cbor_map! {"type" => "boolean"});
             let result = if is_some {
-                // nocov end
-                // nocov start
                 Some(self.inner.do_draw(tc))
             } else {
                 None

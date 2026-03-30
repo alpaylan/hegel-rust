@@ -92,8 +92,8 @@ impl Connection {
 
     // nocov start
     pub fn mark_server_exited(&self) {
+        self.server_exited.store(true, Ordering::SeqCst);
         // nocov end
-        self.server_exited.store(true, Ordering::SeqCst); // nocov
     }
 
     pub fn server_has_exited(&self) -> bool {
@@ -103,8 +103,8 @@ impl Connection {
     // nocov start
     fn server_crashed_error() -> std::io::Error {
         std::io::Error::new(
+            std::io::ErrorKind::ConnectionAborted,
             // nocov end
-            std::io::ErrorKind::ConnectionAborted, // nocov
             super::SERVER_CRASHED_MESSAGE,
         )
     }

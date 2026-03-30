@@ -321,8 +321,8 @@ fn ensure_hegel_installed() -> Result<String, String> {
         .stderr(log_file.try_clone().unwrap())
         .stdout(log_file)
         .status()
-        .map_err(|e| format!("Failed to run `uv pip install`: {e}"))?; // nocov
-    // nocov start
+        // nocov start
+        .map_err(|e| format!("Failed to run `uv pip install`: {e}"))?;
     if !status.success() {
         let log = std::fs::read_to_string(&install_log).unwrap_or_default();
         return Err(format!(
@@ -512,9 +512,9 @@ impl Settings {
     /// Set the verbosity level.
     // nocov start
     pub fn verbosity(mut self, verbosity: Verbosity) -> Self {
+        self.verbosity = verbosity;
+        self
         // nocov end
-        self.verbosity = verbosity; // nocov
-        self // nocov
     }
 
     /// Set a fixed seed for reproducibility, or `None` for random.
@@ -564,8 +564,8 @@ impl Settings {
 impl Default for Settings {
     // nocov start
     fn default() -> Self {
+        Self::new()
         // nocov end
-        Self::new() // nocov
     }
 }
 
@@ -690,8 +690,8 @@ where
                 Ok(event) => event,
                 // nocov start
                 Err(_) if connection.server_has_exited() => {
+                    panic!("{}", SERVER_CRASHED_MESSAGE);
                     // nocov end
-                    panic!("{}", SERVER_CRASHED_MESSAGE); // nocov
                 }
                 Err(e) => unreachable!("Failed to receive event (server still running): {}", e),
             };
@@ -820,8 +820,8 @@ where
             #[cfg(feature = "antithesis")]
             // nocov start
             if let Some(ref loc) = self.test_location {
+                crate::antithesis::emit_assertion(loc, !test_failed);
                 // nocov end
-                crate::antithesis::emit_assertion(loc, !test_failed); // nocov
             }
         }
 

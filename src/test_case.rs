@@ -31,8 +31,8 @@ pub struct StopTestError;
 impl std::fmt::Display for StopTestError {
     // nocov start
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Server ran out of data (StopTest)")
         // nocov end
-        write!(f, "Server ran out of data (StopTest)") // nocov
     }
 }
 impl std::error::Error for StopTestError {}
@@ -245,8 +245,8 @@ impl TestCase {
             assert!(local.span_depth > 0);
             local.span_depth -= 1;
             drop(local);
+            panic!("{}", STOP_TEST_STRING);
             // nocov end
-            panic!("{}", STOP_TEST_STRING); // nocov
         }
     }
 
@@ -332,8 +332,8 @@ impl TestCase {
                     Err(StopTestError)
                 // nocov start
                 } else if self.global.borrow().connection.server_has_exited() {
+                    panic!("{}", SERVER_CRASHED_MESSAGE);
                     // nocov end
-                    panic!("{}", SERVER_CRASHED_MESSAGE); // nocov
                 } else {
                     panic!("Failed to communicate with Hegel: {}", e); // nocov
                 }
@@ -466,8 +466,6 @@ impl<'a> Collection<'a> {
     // nocov start
     pub fn reject(&mut self, why: Option<&str>) {
         if self.finished {
-            // nocov end
-            // nocov start
             return;
         }
         let server_name = self.ensure_initialized().to_string();
@@ -477,8 +475,8 @@ impl<'a> Collection<'a> {
         };
         // nocov start
         if let Some(reason) = why {
+            map_insert(&mut payload, "why", reason.to_string());
             // nocov end
-            map_insert(&mut payload, "why", reason.to_string()); // nocov
         }
         let _ = self.tc.send_request("collection_reject", &payload); // nocov
     }

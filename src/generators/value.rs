@@ -56,8 +56,6 @@ impl From<ciborium::Value> for HegelValue {
                 map.into_iter() // nocov
                     .map(|(k, v)| {
                         let key = match k {
-                            // nocov end
-                            // nocov start
                             ciborium::Value::Text(s) => s,
                             other => format!("{:?}", other),
                         };
@@ -91,8 +89,8 @@ impl From<ciborium::Value> for HegelValue {
             }
             // nocov start
             ciborium::Value::Tag(tag, _) => {
+                panic!("Unexpected CBOR tag {tag} in protocol value")
                 // nocov end
-                panic!("Unexpected CBOR tag {tag} in protocol value") // nocov
             }
             other => panic!("Unexpected CBOR value type: {:?}", other), // nocov
         }
@@ -105,8 +103,8 @@ pub struct HegelValueError(String);
 impl fmt::Display for HegelValueError {
     // nocov start
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
         // nocov end
-        write!(f, "{}", self.0) // nocov
     }
 }
 
@@ -115,8 +113,8 @@ impl std::error::Error for HegelValueError {}
 impl de::Error for HegelValueError {
     // nocov start
     fn custom<T: fmt::Display>(msg: T) -> Self {
+        HegelValueError(msg.to_string())
         // nocov end
-        HegelValueError(msg.to_string()) // nocov
     }
 }
 
@@ -166,9 +164,9 @@ impl<'de> Deserializer<'de> for HegelValue {
     // nocov start
     fn deserialize_option<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         match self {
+            HegelValue::Null => visitor.visit_none(),
+            _ => visitor.visit_some(self),
             // nocov end
-            HegelValue::Null => visitor.visit_none(), // nocov
-            _ => visitor.visit_some(self),            // nocov
         }
     }
 
