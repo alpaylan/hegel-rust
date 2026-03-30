@@ -135,6 +135,45 @@ fn main() {}
     TempRustProject::new().main_file(code).cargo_test(&[]);
 }
 
+struct TestLifetimeMachine<'a> {
+    data: &'a [i32],
+}
+
+#[hegel::state_machine]
+impl<'a> TestLifetimeMachine<'a> {
+    #[rule]
+    fn f(&mut self, _tc: TestCase) {
+        assert!(!self.data.is_empty());
+    }
+}
+
+#[hegel::test]
+fn test_state_machine_with_lifetime(tc: TestCase) {
+    let data = vec![1, 2, 3];
+    let m = TestLifetimeMachine { data: &data };
+    hegel::stateful::run(m, tc);
+}
+
+struct GenericMachine<T> {
+    values: Vec<T>,
+}
+
+#[hegel::state_machine]
+impl<T: std::fmt::Debug> GenericMachine<T> {
+    #[rule]
+    fn check(&mut self, _tc: TestCase) {
+        let _ = self.values.len();
+    }
+}
+
+#[hegel::test]
+fn test_state_machine_with_type_parameter(tc: TestCase) {
+    let m = GenericMachine {
+        values: vec![1, 2, 3],
+    };
+    hegel::stateful::run(m, tc);
+}
+
 // Drawing an element from a bundle should always yield an element that was previously added.
 struct TestDrawDomainMachine {
     domain: Vec<i32>,

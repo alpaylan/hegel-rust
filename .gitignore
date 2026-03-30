@@ -10,7 +10,6 @@
 .hegel
 __pycache__
 target/
-**/.claude/
 result
 .claude-reliability/
 .claude/reliability-config.yml

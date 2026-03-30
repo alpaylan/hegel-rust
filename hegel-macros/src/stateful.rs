@@ -54,12 +54,13 @@ pub fn expand_state_machine(mut block: ItemImpl) -> TokenStream {
     }
 
     let block_type = &block.self_ty;
+    let (impl_generics, _, where_clause) = block.generics.split_for_impl();
     let rule_entries = method_entries(&rules);
     let invariant_entries = method_entries(&invariants);
 
     quote! {
         #block
-        impl ::hegel::stateful::StateMachine for #block_type {
+        impl #impl_generics ::hegel::stateful::StateMachine for #block_type #where_clause {
             fn rules(&self) -> Vec<::hegel::stateful::Rule<Self>> {
                 vec![ #( #rule_entries ),* ]
             }

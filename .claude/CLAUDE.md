@@ -98,3 +98,7 @@ For enums, it also creates `<Enum><Variant>Generator` for each data variant. Imp
 ### Conformance Tests
 
 Located in `tests/conformance/`. Rust test binaries in `tests/conformance/rust/src/bin/` are invoked by a Python test runner (`tests/conformance/test_conformance.py`) that validates generators produce values matching their declared constraints.
+
+### Writing Changelog Entries
+
+When writing a `RELEASE.md`, read `.claude/changelog-guidance.md` for detailed style guidance.
