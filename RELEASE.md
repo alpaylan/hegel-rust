@@ -13,4 +13,8 @@ The remaining lines are the actual changelog text for this release, which should
 - concisely describe any public-facing changes, and why. Internal-only changes can be documented as e.g. "This release improves an internal invariant."
 - use `single backticks` for verbatim code.
 
-After the pull request is merged, the contents of this file (except the first line) are automatically added to `CHANGELOG.md`. More examples can be found in that file.
+RELEASE_TYPE: patch
+
+This patch upgrades [`rand`](https://crates.io/crates/rand) to `0.10` in our `rand` feature.
+
+Thanks to Benjamin Brittain for this patch!
