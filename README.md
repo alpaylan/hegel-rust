@@ -52,4 +52,4 @@ assertion `left == right` failed
  right: [0]
 ```
 
-For a passing test, remove `result.dedup()` from `my_sort()`. 
+Hegel reports the minimal example showing that our sort is incorrectly dropping duplicates. If we remove `result.dedup()` from `my_sort()`, this test will then pass (because it's just comparing the standard sort against itself). 
