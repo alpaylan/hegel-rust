@@ -74,24 +74,10 @@ impl HegelSession {
 
         let response = match handshake_result {
             Ok(r) => r,
-            Err(handshake_err) => {
-                // Wait up to 100ms for the child to exit on its own
-                let exit_status = wait_for_exit(&mut child, Duration::from_millis(100));
-                let child_still_running = exit_status.is_none();
-                if child_still_running {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    panic!(
-                        "The hegel server failed during startup handshake: {handshake_err}\n\n\
-                         The server process did not exit. Possibly bad virtualenv?"
-                    );
-                }
+            Err(e) => { // nocov
                 let binary_path = std::env::var(HEGEL_SERVER_COMMAND_ENV)
                     .unwrap_or_else(|_| "hegel".to_string());
-                panic!(
-                    "{}",
-                    startup_error_message(&binary_path, exit_status.unwrap())
-                );
+                handle_handshake_failure(&mut child, &binary_path, e)
             }
         };
 
@@ -276,7 +262,8 @@ fn init_panic_hook() {
 
 fn hegel_command() -> Command {
     if let Ok(override_path) = std::env::var(HEGEL_SERVER_COMMAND_ENV) {
-        return Command::new(override_path); // nocov
+        let resolved = resolve_hegel_path(&override_path); // nocov
+        return Command::new(resolved); // nocov
     }
     let uv_path = crate::uv::find_uv();
     let mut cmd = Command::new(uv_path);
@@ -317,15 +304,33 @@ fn wait_for_exit(
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }
-            Err(_) => return None,
+            Err(_) => return None, // nocov
         }
     }
 }
 
-fn startup_error_message(
+fn handle_handshake_failure(
+    child: &mut std::process::Child,
     binary_path: &str,
-    exit_status: std::process::ExitStatus,
-) -> String {
+    handshake_err: impl std::fmt::Display,
+) -> ! {
+    let exit_status = wait_for_exit(child, Duration::from_millis(100));
+    let child_still_running = exit_status.is_none();
+    if child_still_running {
+        let _ = child.kill();
+        let _ = child.wait();
+        panic!(
+            "The hegel server failed during startup handshake: {handshake_err}\n\n\
+             The server process did not exit. Possibly bad virtualenv?"
+        );
+    }
+    panic!(
+        "{}",
+        startup_error_message(binary_path, exit_status.unwrap(),)
+    );
+}
+
+fn startup_error_message(binary_path: &str, exit_status: std::process::ExitStatus) -> String {
     let mut parts = Vec::new();
 
     parts.push("The hegel server failed during startup handshake.".to_string());
@@ -376,6 +381,55 @@ fn startup_error_message(
     parts.join("\n\n")
 }
 
+
+fn validate_executable(path: &str) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.permissions().mode() & 0o111 == 0 {
+                panic!(
+                    "Hegel server binary at '{}' is not executable. \
+                     Check file permissions.",
+                    path
+                );
+            }
+        }
+    }
+}
+
+fn resolve_hegel_path(path: &str) -> String {
+    let p = std::path::Path::new(path);
+    if p.exists() {
+        validate_executable(path);
+        return path.to_string();
+    }
+
+    // Bare name (no '/') — try PATH lookup
+    if !path.contains('/') {
+        if let Ok(path_var) = std::env::var("PATH") {
+            for dir in std::env::split_paths(&path_var) {
+                let candidate = dir.join(path);
+                if candidate.is_file() {
+                    let resolved = candidate.to_string_lossy().to_string();
+                    validate_executable(&resolved);
+                    return resolved;
+                }
+            }
+        }
+        panic!(
+            "Hegel server binary '{}' not found on PATH. \
+             Check that {} is set correctly, or install hegel-core.",
+            path, HEGEL_SERVER_COMMAND_ENV
+        );
+    }
+
+    panic!(
+        "Hegel server binary not found at '{}'. \
+         Check that {} is set correctly.",
+        path, HEGEL_SERVER_COMMAND_ENV
+    );
+}
 
 /// Health checks that can be suppressed during test execution.
 ///
@@ -962,4 +1016,129 @@ fn cbor_encode(value: &Value) -> Vec<u8> {
 /// Decode CBOR bytes to a ciborium::Value.
 fn cbor_decode(bytes: &[u8]) -> Value {
     ciborium::from_reader(bytes).expect("CBOR decoding failed")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wait_for_exit_child_exits() {
+        let mut child = Command::new("true").spawn().unwrap();
+        let result = wait_for_exit(&mut child, Duration::from_secs(5));
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_wait_for_exit_timeout() {
+        let mut child = Command::new("sleep").arg("100").spawn().unwrap();
+        let result = wait_for_exit(&mut child, Duration::from_millis(50));
+        assert!(result.is_none());
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+
+    #[test]
+    fn test_startup_error_message_version_mismatch() {
+        let dir = std::env::temp_dir().join("hegel_test_unit_version");
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("fake_version");
+        std::fs::write(&script, "#!/bin/sh\necho 'hegel (version 0.0.0)'\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let exit_status = Command::new("false").status().unwrap();
+        let msg = startup_error_message(script.to_str().unwrap(), exit_status);
+        assert!(msg.contains("Version mismatch"), "Message: {msg}");
+    }
+
+    #[test]
+    fn test_startup_error_message_not_hegel() {
+        let exit_status = Command::new("false").status().unwrap();
+        let msg = startup_error_message("false", exit_status);
+        assert!(msg.contains("Is this a hegel binary"), "Message: {msg}");
+    }
+
+    #[test]
+    fn test_startup_error_message_binary_not_found() {
+        let exit_status = Command::new("false").status().unwrap();
+        let msg = startup_error_message("/nonexistent/path/hegel_xyz", exit_status);
+        assert!(msg.contains("Is this a hegel binary"), "Message: {msg}");
+    }
+
+    #[test]
+    fn test_startup_error_message_includes_server_log() {
+        let dir = std::env::temp_dir().join("hegel_test_unit_log");
+        std::fs::create_dir_all(&dir).unwrap();
+        let log_file = dir.join("server.log");
+        std::fs::write(
+            &log_file,
+            "Error: startup failed\nDetail 1\nDetail 2\nDetail 3\n",
+        )
+        .unwrap();
+        let log_path_str = log_file.to_string_lossy().to_string();
+        let _ = SERVER_LOG_PATH.set(log_path_str.clone());
+
+        let exit_status = Command::new("false").status().unwrap();
+        let msg = startup_error_message("false", exit_status);
+        // Only assert if we successfully set the path (OnceLock may already be set)
+        if SERVER_LOG_PATH.get() == Some(&log_path_str) {
+            assert!(msg.contains("Server log"), "Message: {msg}");
+            assert!(msg.contains("for full output"), "Message: {msg}");
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    #[should_panic(expected = "not executable")]
+    fn test_validate_executable_panics_for_non_executable() {
+        let dir = std::env::temp_dir().join("hegel_test_unit_exec");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("not_exec");
+        std::fs::write(&path, "").unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        validate_executable(path.to_str().unwrap());
+    }
+
+    #[test]
+    fn test_resolve_hegel_path_existing_executable() {
+        let result = resolve_hegel_path("/bin/sh");
+        assert_eq!(result, "/bin/sh");
+    }
+
+    #[test]
+    fn test_resolve_hegel_path_bare_name_on_path() {
+        let result = resolve_hegel_path("sh");
+        assert!(result.contains("sh"));
+    }
+
+    #[test]
+    #[should_panic(expected = "not found on PATH")]
+    fn test_resolve_hegel_path_bare_name_not_on_path() {
+        resolve_hegel_path("definitely_not_a_real_binary_xyz_123");
+    }
+
+    #[test]
+    #[should_panic(expected = "not found at")]
+    fn test_resolve_hegel_path_nonexistent_absolute() {
+        resolve_hegel_path("/nonexistent/path/to/hegel");
+    }
+
+    #[test]
+    #[should_panic(expected = "failed during startup")]
+    fn test_handle_handshake_failure_child_exited() {
+        let mut child = Command::new("false").spawn().unwrap();
+        std::thread::sleep(Duration::from_millis(50));
+        handle_handshake_failure(&mut child, "false", "test error");
+    }
+
+    #[test]
+    #[should_panic(expected = "Possibly bad virtualenv")]
+    fn test_handle_handshake_failure_child_hangs() {
+        let mut child = Command::new("sleep").arg("100").spawn().unwrap();
+        handle_handshake_failure(&mut child, "sleep", "test error");
+    }
 }

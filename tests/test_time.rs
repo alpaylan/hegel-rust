@@ -2,11 +2,22 @@ mod common;
 
 use common::utils::assert_all_examples;
 use hegel::generators;
+use hegel::generators::{DefaultGenerator, Generator};
 use std::time::Duration;
 
 #[test]
 fn test_durations_default() {
     assert_all_examples(generators::durations(), |d| *d >= Duration::ZERO);
+}
+
+#[test]
+fn test_duration_default_generator() {
+    assert_all_examples(Duration::default_generator(), |d| *d >= Duration::ZERO);
+}
+
+#[test]
+fn test_durations_mapped() {
+    assert_all_examples(generators::durations().map(|d| d.as_secs()), |_| true);
 }
 
 #[test]

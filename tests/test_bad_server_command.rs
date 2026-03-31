@@ -90,11 +90,7 @@ fn test_server_hangs_gives_bad_virtualenv_message() {
     let dir = std::env::temp_dir().join("hegel_test_hanging");
     std::fs::create_dir_all(&dir).unwrap();
     let script_path = dir.join("hanging_hegel");
-    std::fs::write(
-        &script_path,
-        "#!/bin/sh\nexec 1>&-\nsleep 10\n",
-    )
-    .unwrap();
+    std::fs::write(&script_path, "#!/bin/sh\nexec 1>&-\nsleep 10\n").unwrap();
 
     use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755)).unwrap();
