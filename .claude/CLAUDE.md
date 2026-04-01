@@ -108,3 +108,7 @@ Located in `tests/conformance/`. Rust test binaries in `tests/conformance/rust/s
 ### Creating Pull Requests
 
 Use the `create-pr` skill, which handles rebasing, RELEASE.md, draft creation, copilot review, and CI watching. Run the `self-review` skill first.
+
+### Writing Changelog Entries
+
+When writing a `RELEASE.md`, read `.claude/skills/create-pr/references/changelog-guidance.md` for detailed style guidance.
