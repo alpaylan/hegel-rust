@@ -158,7 +158,7 @@ class UncoveredLine:
 
     def is_inside_excluded_macro(self) -> bool:
         """
-        Check if this line is a continuation of a multi-line unreachable!/todo!().
+        Check if this line is a continuation of a multi-line unreachable!/todo!()/assert!().
 
         Looks backward for an unclosed macro call that spans multiple lines.
         """
@@ -175,7 +175,7 @@ class UncoveredLine:
             if start < 0 or start >= len(lines):
                 continue
             line = lines[start].strip()
-            if re.search(r"\b(unreachable|todo)!\s*\(", line):
+            if re.search(r"\b(unreachable|todo|assert)!\s*\(", line):
                 # Count parens from macro start to line BEFORE current
                 paren_depth = 0
                 for check_idx in range(start, idx):
