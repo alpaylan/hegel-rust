@@ -22,7 +22,7 @@ fn expected_sha256(archive_name: &str) -> Option<&'static str> {
     }
 }
 
-fn verify_sha256(path: &Path, expected: &str) -> Result<(), String> {
+fn compute_sha256(path: &Path) -> String {
     // Try sha256sum (Linux) then shasum (macOS)
     let output = std::process::Command::new("sha256sum")
         .arg(path)
@@ -33,21 +33,23 @@ fn verify_sha256(path: &Path, expected: &str) -> Result<(), String> {
                 .arg(path)
                 .output()
         })
-        .map_err(|e| format!("Failed to run sha256sum/shasum: {e}"))?;
+        .expect("Failed to run sha256sum or shasum — is one installed?");
 
-    if !output.status.success() {
-        return Err(format!(
-            "SHA-256 check failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    assert!(
+        output.status.success(),
+        "sha256sum/shasum failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let actual = stdout
+    String::from_utf8_lossy(&output.stdout)
         .split_whitespace()
         .next()
-        .ok_or("Empty output from sha256sum")?;
+        .expect("Empty output from sha256sum")
+        .to_string()
+}
 
+fn verify_sha256(path: &Path, expected: &str) -> Result<(), String> {
+    let actual = compute_sha256(path);
     if actual != expected {
         return Err(format!(
             "SHA-256 mismatch for {}: expected {expected}, got {actual}. \
@@ -413,31 +415,11 @@ mod tests {
         assert!(err.contains("SHA-256 mismatch"));
     }
 
-    /// Helper: compute SHA-256 of a file using the same tool verify_sha256 uses.
-    fn sha256_of(path: &Path) -> String {
-        let output = std::process::Command::new("sha256sum")
-            .arg(path)
-            .output()
-            .or_else(|_| {
-                std::process::Command::new("shasum")
-                    .args(["-a", "256"])
-                    .arg(path)
-                    .output()
-            })
-            .unwrap();
-        assert!(output.status.success());
-        String::from_utf8_lossy(&output.stdout)
-            .split_whitespace()
-            .next()
-            .unwrap()
-            .to_string()
-    }
-
     #[test]
     fn test_download_with_sha256_verification() {
         let temp = tempfile::tempdir().unwrap();
         let archive = create_fake_uv_archive(temp.path());
-        let hash = sha256_of(&archive);
+        let hash = compute_sha256(&archive);
 
         let url = format!("file://{}", archive.display());
         let cache = temp.path().join("cache");
@@ -516,5 +498,67 @@ mod tests {
 
         let err = download_url_to_cache(&url, "not-a-tar.tar.gz", None, &cache).unwrap_err();
         assert!(err.contains("Failed to extract uv archive"));
+    }
+
+    #[test]
+    fn test_compute_sha256_falls_back_to_shasum() {
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("test.bin");
+        std::fs::write(&file, "hello world").unwrap();
+
+        // Create a fake shasum script that delegates to sha256sum
+        let bin_dir = temp.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        std::fs::write(bin_dir.join("shasum"), "#!/bin/sh\nsha256sum \"$@\"\n").unwrap();
+        std::fs::set_permissions(
+            bin_dir.join("shasum"),
+            std::os::unix::fs::PermissionsExt::from_mode(0o755),
+        )
+        .unwrap();
+
+        // Set PATH so sha256sum is not found but our shasum is
+        let path = std::env::var("PATH").unwrap_or_default();
+        let filtered: String = path
+            .split(':')
+            .filter(|dir| !std::path::Path::new(&format!("{dir}/sha256sum")).exists())
+            .collect::<Vec<_>>()
+            .join(":");
+        let new_path = format!("{}:{filtered}", bin_dir.display());
+
+        // compute_sha256 reads PATH, so we need to call it in a subprocess
+        // to avoid interfering with parallel tests.
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "uv::tests::test_compute_sha256_falls_back_to_shasum_inner",
+            ])
+            .env("PATH", &new_path)
+            .env("TEST_FILE", &file)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "shasum fallback test failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn test_compute_sha256_falls_back_to_shasum_inner() {
+        let file = PathBuf::from(std::env::var("TEST_FILE").unwrap());
+        let hash = compute_sha256(&file);
+        assert_eq!(
+            hash,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+    }
+
+    #[test]
+    fn test_download_uv_to_full_pipeline() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("hegel");
+        download_uv_to(&cache).unwrap();
+        assert!(cache.join("uv").is_file());
     }
 }
