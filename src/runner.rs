@@ -1,6 +1,6 @@
 use crate::antithesis::{TestLocation, is_running_in_antithesis};
 use crate::control::{currently_in_test_context, with_test_context};
-use crate::protocol::{Channel, Connection, HANDSHAKE_STRING, SERVER_CRASHED_MESSAGE};
+use crate::protocol::{Connection, HANDSHAKE_STRING, SERVER_CRASHED_MESSAGE, Stream};
 use crate::test_case::{ASSUME_FAIL_STRING, STOP_TEST_STRING, TestCase};
 use ciborium::Value;
 
@@ -13,7 +13,7 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Once};
 
-const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.6, 0.7);
+const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.8, 0.8);
 const HEGEL_SERVER_VERSION: &str = "0.3.0";
 const HEGEL_SERVER_COMMAND_ENV: &str = "HEGEL_SERVER_COMMAND";
 const HEGEL_SERVER_DIR: &str = ".hegel";
@@ -29,11 +29,11 @@ static PANIC_HOOK_INIT: Once = Once::new();
 /// multiple sequential `run_test` commands over a single connection.
 struct HegelSession {
     connection: Arc<Connection>,
-    /// The control channel is shared across threads, so it's behind a Mutex
-    /// because Channel is not thread-safe. The lock is only held for the
+    /// The control stream is shared across threads, so it's behind a Mutex
+    /// because Stream is not thread-safe. The lock is only held for the
     /// brief run_test send/receive; test execution runs concurrently on
-    /// per-test channels.
-    control: Mutex<Channel>,
+    /// per-test streams.
+    control: Mutex<Stream>,
 }
 
 impl HegelSession {
@@ -63,7 +63,7 @@ impl HegelSession {
         let child_stdout = child.stdout.take().expect("Failed to take child stdout");
 
         let connection = Connection::new(Box::new(child_stdout), Box::new(child_stdin));
-        let mut control = connection.control_channel();
+        let mut control = connection.control_stream();
 
         // Handshake
         let req_id = control
@@ -538,7 +538,7 @@ where
         let mut test_fn = self.test_fn;
         let verbosity = self.settings.verbosity;
         let got_interesting = Arc::new(AtomicBool::new(false));
-        let mut test_channel = connection.new_channel();
+        let mut test_stream = connection.new_stream();
 
         let suppress_names: Vec<Value> = self
             .settings
@@ -555,7 +555,7 @@ where
             "command" => "run_test",
             "test_cases" => self.settings.test_cases,
             "seed" => self.settings.seed.map_or(Value::Null, Value::from),
-            "channel_id" => test_channel.channel_id,
+            "stream_id" => test_stream.stream_id,
             "database_key" => database_key_bytes,
             "derandomize" => self.settings.derandomize
         };
@@ -578,9 +578,9 @@ where
             }
         }
 
-        // The control channel is behind a Mutex because Channel requires &mut self.
+        // The control stream is behind a Mutex because Stream requires &mut self.
         // This only serializes the brief run_test send/receive — actual test
-        // execution happens on per-test channels without holding this lock.
+        // execution happens on per-test streams without holding this lock.
         {
             let mut control = session.control.lock().unwrap();
             let run_test_id = control
@@ -602,7 +602,7 @@ where
         loop {
             // Handle the server dying between events: receive_request will
             // fail with RecvError once the background reader clears the senders.
-            let (event_id, event_payload) = match test_channel.receive_request() {
+            let (event_id, event_payload) = match test_stream.receive_request() {
                 Ok(event) => event,
                 // nocov start
                 Err(_) if connection.server_has_exited() => {
@@ -623,20 +623,20 @@ where
 
             match event_type {
                 "test_case" => {
-                    let channel_id = map_get(&event, "channel_id")
+                    let stream_id = map_get(&event, "stream_id")
                         .and_then(as_u64)
-                        .expect("Missing channel id") as u32;
+                        .expect("Missing stream id") as u32;
 
-                    let test_case_channel = connection.connect_channel(channel_id);
+                    let test_case_stream = connection.connect_stream(stream_id);
 
                     // Ack the test_case event BEFORE running the test (prevents deadlock)
-                    test_channel
+                    test_stream
                         .write_reply(event_id, cbor_encode(&ack_null))
                         .expect("Failed to ack test_case");
 
                     run_test_case(
                         connection,
-                        test_case_channel,
+                        test_case_stream,
                         &mut test_fn,
                         false,
                         verbosity,
@@ -645,7 +645,7 @@ where
                 }
                 "test_done" => {
                     let ack_true = cbor_map! {"result" => true};
-                    test_channel
+                    test_stream
                         .write_reply(event_id, cbor_encode(&ack_true))
                         .expect("Failed to ack test_done");
                     result_data = map_get(&event, "results").cloned().unwrap_or(Value::Null);
@@ -683,7 +683,7 @@ where
         // Process final replay test cases (one per interesting example)
         let mut final_result: Option<TestCaseResult> = None;
         for _ in 0..n_interesting {
-            let (event_id, event_payload) = test_channel
+            let (event_id, event_payload) = test_stream
                 .receive_request()
                 .expect("Failed to receive final test_case");
 
@@ -691,19 +691,19 @@ where
             let event_type = map_get(&event, "event").and_then(as_text);
             assert_eq!(event_type, Some("test_case"));
 
-            let channel_id = map_get(&event, "channel_id")
+            let stream_id = map_get(&event, "stream_id")
                 .and_then(as_u64)
-                .expect("Missing channel id") as u32;
+                .expect("Missing stream id") as u32;
 
-            let test_case_channel = connection.connect_channel(channel_id);
+            let test_case_stream = connection.connect_stream(stream_id);
 
-            test_channel
+            test_stream
                 .write_reply(event_id, cbor_encode(&ack_null))
                 .expect("Failed to ack final test_case");
 
             let tc_result = run_test_case(
                 connection,
-                test_case_channel,
+                test_case_stream,
                 &mut test_fn,
                 true,
                 verbosity,
@@ -759,7 +759,7 @@ enum TestCaseResult {
 
 fn run_test_case<F: FnMut(TestCase)>(
     connection: &Arc<Connection>,
-    test_channel: Channel,
+    test_stream: Stream,
     test_fn: &mut F,
     is_final: bool,
     verbosity: Verbosity,
@@ -767,7 +767,7 @@ fn run_test_case<F: FnMut(TestCase)>(
 ) -> TestCaseResult {
     // Create TestCase. The test function gets a clone (cheap Rc bump),
     // so we retain access to the same underlying TestCaseData after the test runs.
-    let tc = TestCase::new(Arc::clone(connection), test_channel, verbosity, is_final);
+    let tc = TestCase::new(Arc::clone(connection), test_stream, verbosity, is_final);
 
     let result = with_test_context(|| catch_unwind(AssertUnwindSafe(|| test_fn(tc.clone()))));
 
@@ -825,8 +825,8 @@ fn run_test_case<F: FnMut(TestCase)>(
         }
     };
 
-    // Send mark_complete using the same channel that generators used.
-    // Skip if test was aborted (StopTest) - server already closed the channel.
+    // Send mark_complete using the same stream that generators used.
+    // Skip if test was aborted (StopTest) - server already closed the stream.
     if !tc.test_aborted() {
         let status = match &tc_result {
             TestCaseResult::Valid => "VALID",

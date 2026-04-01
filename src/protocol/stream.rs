@@ -8,11 +8,11 @@ use super::packet::Packet;
 use crate::cbor_utils::{as_text, map_get};
 use std::sync::Arc;
 
-const CLOSE_CHANNEL_PAYLOAD: &[u8] = &[0xFE];
-const CLOSE_CHANNEL_MESSAGE_ID: u32 = (1u32 << 31) - 1;
+const CLOSE_STREAM_PAYLOAD: &[u8] = &[0xFE];
+const CLOSE_STREAM_MESSAGE_ID: u32 = (1u32 << 31) - 1;
 
-pub struct Channel {
-    pub channel_id: u32,
+pub struct Stream {
+    pub stream_id: u32,
     connection: Arc<Connection>,
     next_message_id: u32,
     responses: HashMap<u32, Vec<u8>>,
@@ -21,14 +21,14 @@ pub struct Channel {
     closed: bool,
 }
 
-impl Channel {
+impl Stream {
     pub(super) fn new(
-        channel_id: u32,
+        stream_id: u32,
         connection: Arc<Connection>,
         receiver: Receiver<Packet>,
     ) -> Self {
         Self {
-            channel_id,
+            stream_id,
             connection,
             next_message_id: 1,
             responses: HashMap::new(),
@@ -38,7 +38,7 @@ impl Channel {
         }
     }
 
-    /// Mark this channel as closed without sending a close packet.
+    /// Mark this stream as closed without sending a close packet.
     ///
     /// Used when the server has already closed its end (e.g. after overflow).
     pub fn mark_closed(&mut self) {
@@ -47,11 +47,9 @@ impl Channel {
 
     fn check_closed(&self) -> std::io::Result<()> {
         if self.closed {
-            // nocov start
             Err(std::io::Error::new(
                 std::io::ErrorKind::BrokenPipe,
-                "channel is closed",
-                // nocov end
+                "stream is closed",
             ))
         } else {
             Ok(())
@@ -64,7 +62,7 @@ impl Channel {
         let message_id = self.next_message_id;
         self.next_message_id += 1;
         let packet = Packet {
-            channel: self.channel_id,
+            stream: self.stream_id,
             message_id,
             is_reply: false,
             payload,
@@ -76,7 +74,7 @@ impl Channel {
     /// Send a response to a request.
     pub fn write_reply(&self, message_id: u32, payload: Vec<u8>) -> std::io::Result<()> {
         let packet = Packet {
-            channel: self.channel_id,
+            stream: self.stream_id,
             message_id,
             is_reply: true,
             payload,
@@ -116,7 +114,7 @@ impl Channel {
                     super::SERVER_CRASHED_MESSAGE,
                 )
             } else {
-                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "channel disconnected") // nocov
+                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "stream disconnected")
             }
         })?;
 
@@ -131,12 +129,12 @@ impl Channel {
 
     pub fn close(&mut self) -> std::io::Result<()> {
         self.mark_closed();
-        self.connection.unregister_channel(self.channel_id);
+        self.connection.unregister_stream(self.stream_id);
         let packet = Packet {
-            channel: self.channel_id,
-            message_id: CLOSE_CHANNEL_MESSAGE_ID,
+            stream: self.stream_id,
+            message_id: CLOSE_STREAM_MESSAGE_ID,
             is_reply: false,
-            payload: CLOSE_CHANNEL_PAYLOAD.to_vec(),
+            payload: CLOSE_STREAM_PAYLOAD.to_vec(),
         };
         self.connection.send_packet(&packet)
     }
@@ -165,12 +163,12 @@ impl Channel {
             return Ok(result.clone());
         }
 
-        Ok(response) // nocov
+        Ok(response)
     }
 }
 
-impl Drop for Channel {
+impl Drop for Stream {
     fn drop(&mut self) {
-        self.connection.unregister_channel(self.channel_id);
+        self.connection.unregister_stream(self.stream_id);
     }
 }
