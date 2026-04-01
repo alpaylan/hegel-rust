@@ -304,3 +304,32 @@ fn main() {
     assert_matches_regex(&output.stderr, r"let val_1 = -?\d+;");
     assert_matches_regex(&output.stderr, r"let val_2 = -?\d+;");
 }
+
+#[test]
+fn test_repeatable_draw_skips_already_allocated_names() {
+    let code = r#"
+fn main() {
+    hegel::hegel(|tc| {
+        // Simulate what the macro would produce for:
+        //   let x_1 = tc.draw(gen);
+        //   for _ in 0..2 { let x = tc.draw(gen); }
+        // The repeatable "x" draws must skip "x_1" which is already taken.
+        let _x_1 = tc.draw_named(hegel::generators::integers::<i32>(), "x_1", false);
+        for _ in 0..2 {
+            let _x = tc.draw_named(hegel::generators::integers::<i32>(), "x", true);
+        }
+        panic!("fail");
+    });
+}
+"#;
+    let output = TempRustProject::new()
+        .main_file(code)
+        .expect_failure("fail")
+        .cargo_run(&[]);
+
+    // "x_1" is used by the non-repeatable draw
+    assert_matches_regex(&output.stderr, r"let x_1 = -?\d+;");
+    // The repeatable draws should skip x_1 and use x_2, x_3
+    assert_matches_regex(&output.stderr, r"let x_2 = -?\d+;");
+    assert_matches_regex(&output.stderr, r"let x_3 = -?\d+;");
+}

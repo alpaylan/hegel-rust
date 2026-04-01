@@ -4,7 +4,7 @@ use crate::protocol::{Connection, SERVER_CRASHED_MESSAGE, Stream};
 use crate::runner::Verbosity;
 use ciborium::Value;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
@@ -66,6 +66,7 @@ pub(crate) struct TestCaseGlobalData {
     test_aborted: bool,
     named_draw_counts: HashMap<String, usize>,
     named_draw_repeatable: HashMap<String, bool>,
+    allocated_display_names: HashSet<String>,
 }
 
 #[derive(Clone)]
@@ -133,6 +134,7 @@ impl TestCase {
                 test_aborted: false,
                 named_draw_counts: HashMap::new(),
                 named_draw_repeatable: HashMap::new(),
+                allocated_display_names: HashSet::new(),
             })),
             local: RefCell::new(TestCaseLocalData {
                 span_depth: 0,
@@ -276,7 +278,6 @@ impl TestCase {
             .or_insert(0);
         *count += 1;
         let current_count = *count;
-        drop(global);
 
         if !repeatable && current_count > 1 {
             panic!(
@@ -287,14 +288,24 @@ impl TestCase {
             );
         }
 
+        let display_name = if repeatable {
+            let mut candidate = current_count;
+            loop {
+                let name = format!("{}_{}", name, candidate);
+                if global.allocated_display_names.insert(name.clone()) {
+                    break name;
+                }
+                candidate += 1;
+            }
+        } else {
+            let name = name.to_string();
+            global.allocated_display_names.insert(name.clone());
+            name
+        };
+        drop(global);
+
         let local = self.local.borrow();
         let indent = local.indent;
-
-        let display_name = if repeatable {
-            format!("{}_{}", name, current_count)
-        } else {
-            name.to_string()
-        };
 
         (local.on_draw)(&format!(
             "{:indent$}let {} = {:?};",
