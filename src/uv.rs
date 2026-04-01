@@ -272,23 +272,34 @@ mod tests {
         assert_eq!(result, cached.to_string_lossy());
     }
 
-    #[test]
-    fn test_download_uv_to_creates_binary() {
-        let temp = tempfile::tempdir().unwrap();
-        let cache = temp.path().join("hegel");
-        download_uv_to(&cache).unwrap();
-        assert!(cache.join("uv").is_file());
+    /// Creates a tar.gz archive containing a fake "uv" binary inside a
+    /// subdirectory (matching the real uv release structure that
+    /// --strip-components 1 expects).
+    fn create_fake_uv_archive(dir: &Path) -> PathBuf {
+        let content_dir = dir.join("uv-fake");
+        std::fs::create_dir_all(&content_dir).unwrap();
+        std::fs::write(content_dir.join("uv"), "#!/bin/sh\necho fake-uv").unwrap();
+
+        let archive = dir.join("uv-fake.tar.gz");
+        let output = std::process::Command::new("tar")
+            .args(["czf"])
+            .arg(&archive)
+            .args(["-C", dir.to_str().unwrap(), "uv-fake"])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "failed to create test archive");
+        archive
     }
 
     #[test]
-    fn test_resolve_uv_downloads_when_not_cached() {
+    fn test_download_and_extract_pipeline() {
         let temp = tempfile::tempdir().unwrap();
-        let cache = temp.path().join("hegel");
-        let cached_uv = cache.join("uv");
+        let archive = create_fake_uv_archive(temp.path());
+        let url = format!("file://{}", archive.display());
+        let cache = temp.path().join("cache");
 
-        let result = resolve_uv(None, cached_uv.clone(), cache);
-        assert_eq!(result, cached_uv.to_string_lossy());
-        assert!(cached_uv.is_file());
+        download_url_to_cache(&url, "uv-fake.tar.gz", &cache).unwrap();
+        assert!(cache.join("uv").is_file());
     }
 
     #[test]
@@ -306,14 +317,15 @@ mod tests {
     #[test]
     fn test_download_invalid_cache_path() {
         let temp = tempfile::tempdir().unwrap();
+        let archive = create_fake_uv_archive(temp.path());
+        let url = format!("file://{}", archive.display());
+
         // Create a file where a directory is expected
         let blocker = temp.path().join("blocker");
         std::fs::write(&blocker, "not a directory").unwrap();
         let bad_cache = blocker.join("hegel");
 
-        let err =
-            download_url_to_cache("https://example.com/fake.tar.gz", "fake.tar.gz", &bad_cache)
-                .unwrap_err();
+        let err = download_url_to_cache(&url, "uv-fake.tar.gz", &bad_cache).unwrap_err();
         assert!(err.contains("Failed to create cache directory"));
     }
 
