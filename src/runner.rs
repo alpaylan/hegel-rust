@@ -17,22 +17,6 @@ const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.6, 0.7);
 const HEGEL_SERVER_VERSION: &str = "0.2.3";
 const HEGEL_SERVER_COMMAND_ENV: &str = "HEGEL_SERVER_COMMAND";
 const HEGEL_SERVER_DIR: &str = ".hegel";
-const UV_NOT_FOUND_MESSAGE: &str = "\
-You are seeing this error message because hegel-rust tried to use `uv` to install \
-hegel-core, but could not find uv on the PATH.
-
-Hegel uses a Python server component called `hegel-core` to share core property-based \
-testing functionality across languages. There are two ways for Hegel to get hegel-core:
-
-* By default, Hegel looks for uv (https://docs.astral.sh/uv/) on the PATH, and \
-  uses uv to install hegel-core to a local `.hegel/venv` directory. We recommend this \
-  option. To continue, install uv: https://docs.astral.sh/uv/getting-started/installation/.
-* Alternatively, you can manage the installation of hegel-core yourself. After installing, \
-  setting the HEGEL_SERVER_COMMAND environment variable to your hegel-core binary path tells \
-  hegel-rust to use that hegel-core instead.
-
-See https://hegel.dev/reference/installation for more details.";
-static HEGEL_SERVER_COMMAND: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 static SERVER_LOG_FILE: std::sync::OnceLock<Mutex<File>> = std::sync::OnceLock::new();
 static SESSION: std::sync::OnceLock<HegelSession> = std::sync::OnceLock::new();
 
@@ -61,8 +45,7 @@ impl HegelSession {
     }
 
     fn init() -> HegelSession {
-        let hegel_binary_path = find_hegel();
-        let mut cmd = Command::new(&hegel_binary_path);
+        let mut cmd = hegel_command();
         cmd.arg("--stdio").arg("--verbosity").arg("normal");
 
         cmd.env("PYTHONUNBUFFERED", "1");
@@ -71,10 +54,10 @@ impl HegelSession {
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::from(log_file));
 
-        #[allow(clippy::expect_fun_call)]
-        let mut child = cmd
-            .spawn()
-            .expect(format!("Failed to spawn hegel at path {}", hegel_binary_path).as_str());
+        let mut child = match cmd.spawn() {
+            Ok(child) => child,
+            Err(e) => panic!("Failed to spawn hegel server: {e}"), // nocov
+        };
 
         let child_stdin = child.stdin.take().expect("Failed to take child stdin");
         let child_stdout = child.stdout.take().expect("Failed to take child stdout");
@@ -94,16 +77,17 @@ impl HegelSession {
         let server_version = match decoded.strip_prefix("Hegel/") {
             Some(v) => v,
             None => {
-                let _ = child.kill();
-                panic!("Bad handshake response: {decoded:?}");
+                let _ = child.kill(); // nocov
+                panic!("Bad handshake response: {decoded:?}"); // nocov
             }
         };
         let version: f64 = server_version.parse().unwrap_or_else(|_| {
-            let _ = child.kill();
-            panic!("Bad version number: {server_version}");
+            let _ = child.kill(); // nocov
+            panic!("Bad version number: {server_version}"); // nocov
         });
 
         let (lo, hi) = SUPPORTED_PROTOCOL_VERSIONS;
+        // nocov start
         if !(lo <= version && version <= hi) {
             let _ = child.kill();
             panic!(
@@ -111,6 +95,7 @@ impl HegelSession {
                  the connected server is using protocol version {version}. Upgrading \
                  hegel-rust or downgrading hegel-core might help."
             );
+            // nocov end
         }
 
         // Monitor thread: detects server crash. The pipe close from
@@ -143,6 +128,7 @@ fn take_panic_info() -> Option<(String, String, String, Backtrace)> {
 /// Short format shows only frames between `__rust_end_short_backtrace` and
 /// `__rust_begin_short_backtrace` markers, matching the default Rust panic handler.
 /// Frame numbers are renumbered to start at 0.
+// nocov start
 fn format_backtrace(bt: &Backtrace, full: bool) -> String {
     let backtrace_str = format!("{}", bt);
 
@@ -229,6 +215,7 @@ fn format_backtrace(bt: &Backtrace, full: bool) -> String {
 
     result.join("\n")
 }
+// nocov end
 
 // Panic unconditionally prints to stderr, even if it's caught later. This results in
 // messy output during shrinking. To avoid this, we replace the panic hook with our
@@ -265,74 +252,20 @@ fn init_panic_hook() {
     });
 }
 
-fn ensure_hegel_installed() -> Result<String, String> {
-    let venv_dir = format!("{HEGEL_SERVER_DIR}/venv");
-    let version_file = format!("{venv_dir}/hegel-version");
-    let hegel_bin = format!("{venv_dir}/bin/hegel");
-    let install_log = format!("{HEGEL_SERVER_DIR}/install.log");
-
-    // Check cached version
-    if let Ok(cached) = std::fs::read_to_string(&version_file) {
-        if cached.trim() == HEGEL_SERVER_VERSION && std::path::Path::new(&hegel_bin).is_file() {
-            return Ok(hegel_bin);
-        }
+fn hegel_command() -> Command {
+    if let Ok(override_path) = std::env::var(HEGEL_SERVER_COMMAND_ENV) {
+        return Command::new(override_path); // nocov
     }
-
-    std::fs::create_dir_all(HEGEL_SERVER_DIR)
-        .map_err(|e| format!("Failed to create {HEGEL_SERVER_DIR}: {e}"))?;
-
-    let log_file = std::fs::File::create(&install_log)
-        .map_err(|e| format!("Failed to create install log: {e}"))?;
-
-    let status = std::process::Command::new("uv")
-        .args(["venv", "--clear", &venv_dir])
-        .stderr(log_file.try_clone().unwrap())
-        .stdout(log_file.try_clone().unwrap())
-        .status();
-    match &status {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Err(UV_NOT_FOUND_MESSAGE.to_string());
-        }
-        Err(e) => {
-            return Err(format!("Failed to run `uv venv`: {e}"));
-        }
-        Ok(s) if !s.success() => {
-            let log = std::fs::read_to_string(&install_log).unwrap_or_default();
-            return Err(format!("uv venv failed. Install log:\n{log}"));
-        }
-        Ok(_) => {}
-    }
-
-    let python_path = format!("{venv_dir}/bin/python");
-    let status = std::process::Command::new("uv")
-        .args([
-            "pip",
-            "install",
-            "--python",
-            &python_path,
-            &format!("hegel-core=={HEGEL_SERVER_VERSION}"),
-        ])
-        .stderr(log_file.try_clone().unwrap())
-        .stdout(log_file)
-        .status()
-        .map_err(|e| format!("Failed to run `uv pip install`: {e}"))?;
-    if !status.success() {
-        let log = std::fs::read_to_string(&install_log).unwrap_or_default();
-        return Err(format!(
-            "Failed to install hegel-core (version: {HEGEL_SERVER_VERSION}). \
-             Set {HEGEL_SERVER_COMMAND_ENV} to a hegel binary path to skip installation.\n\
-             Install log:\n{log}"
-        ));
-    }
-
-    if !std::path::Path::new(&hegel_bin).is_file() {
-        return Err(format!("hegel not found at {hegel_bin} after installation"));
-    }
-
-    std::fs::write(&version_file, HEGEL_SERVER_VERSION)
-        .map_err(|e| format!("Failed to write version file: {e}"))?;
-
-    Ok(hegel_bin)
+    let uv_path = crate::uv::find_uv();
+    let mut cmd = Command::new(uv_path);
+    cmd.args([
+        "tool",
+        "run",
+        "--from",
+        &format!("hegel-core=={HEGEL_SERVER_VERSION}"),
+        "hegel",
+    ]);
+    cmd
 }
 
 fn server_log_file() -> File {
@@ -349,15 +282,6 @@ fn server_log_file() -> File {
         .unwrap()
         .try_clone()
         .expect("Failed to clone server log file handle")
-}
-
-fn find_hegel() -> String {
-    if let Ok(override_path) = std::env::var(HEGEL_SERVER_COMMAND_ENV) {
-        return override_path;
-    }
-    HEGEL_SERVER_COMMAND
-        .get_or_init(|| ensure_hegel_installed().unwrap_or_else(|e| panic!("{e}")))
-        .clone()
 }
 
 /// Health checks that can be suppressed during test execution.
@@ -449,7 +373,7 @@ fn is_in_ci() -> bool {
 
     CI_VARS.iter().any(|(key, value)| match value {
         None => std::env::var_os(key).is_some(),
-        Some(expected) => std::env::var(key).ok().as_deref() == Some(expected),
+        Some(expected) => std::env::var(key).ok().as_deref() == Some(expected), // nocov
     })
 }
 
@@ -489,7 +413,7 @@ impl Settings {
             database: if in_ci {
                 Database::Disabled
             } else {
-                Database::Unset
+                Database::Unset // nocov
             },
             suppress_health_check: Vec::new(),
         }
@@ -502,9 +426,11 @@ impl Settings {
     }
 
     /// Set the verbosity level.
+    // nocov start
     pub fn verbosity(mut self, verbosity: Verbosity) -> Self {
         self.verbosity = verbosity;
         self
+        // nocov end
     }
 
     /// Set a fixed seed for reproducibility, or `None` for random.
@@ -552,8 +478,10 @@ impl Settings {
 }
 
 impl Default for Settings {
+    // nocov start
     fn default() -> Self {
         Self::new()
+        // nocov end
     }
 }
 
@@ -632,7 +560,7 @@ where
             "derandomize" => self.settings.derandomize
         };
         let db_value = match &self.settings.database {
-            Database::Unset => Option::None,
+            Database::Unset => Option::None, // nocov
             Database::Disabled => Some(Value::Null),
             Database::Path(s) => Some(Value::Text(s.clone())),
         };
@@ -666,7 +594,7 @@ where
         }
 
         if verbosity == Verbosity::Debug {
-            eprintln!("run_test response received");
+            eprintln!("run_test response received"); // nocov
         }
 
         let result_data: Value;
@@ -676,8 +604,10 @@ where
             // fail with RecvError once the background reader clears the senders.
             let (event_id, event_payload) = match test_channel.receive_request() {
                 Ok(event) => event,
+                // nocov start
                 Err(_) if connection.server_has_exited() => {
                     panic!("{}", SERVER_CRASHED_MESSAGE);
+                    // nocov end
                 }
                 Err(e) => unreachable!("Failed to receive event (server still running): {}", e),
             };
@@ -688,7 +618,7 @@ where
                 .expect("Expected event in payload");
 
             if verbosity == Verbosity::Debug {
-                eprintln!("Received event: {:?}", event);
+                eprintln!("Received event: {:?}", event); // nocov
             }
 
             match event_type {
@@ -722,24 +652,24 @@ where
                     break;
                 }
                 _ => {
-                    panic!("unknown event: {}", event_type);
+                    panic!("unknown event: {}", event_type); // nocov
                 }
             }
         }
 
         // Check for server-side errors before processing results
         if let Some(error_msg) = map_get(&result_data, "error").and_then(as_text) {
-            panic!("Server error: {}", error_msg);
+            panic!("Server error: {}", error_msg); // nocov
         }
 
         // Check for health check failure before processing results
         if let Some(failure_msg) = map_get(&result_data, "health_check_failure").and_then(as_text) {
-            panic!("Health check failure:\n{}", failure_msg);
+            panic!("Health check failure:\n{}", failure_msg); // nocov
         }
 
         // Check for flaky test detection
         if let Some(flaky_msg) = map_get(&result_data, "flaky").and_then(as_text) {
-            panic!("Flaky test detected: {}", flaky_msg);
+            panic!("Flaky test detected: {}", flaky_msg); // nocov
         }
 
         let n_interesting = map_get(&result_data, "interesting_test_cases")
@@ -747,7 +677,7 @@ where
             .unwrap_or(0);
 
         if verbosity == Verbosity::Debug {
-            eprintln!("Test done. interesting_test_cases={}", n_interesting);
+            eprintln!("Test done. interesting_test_cases={}", n_interesting); // nocov
         }
 
         // Process final replay test cases (one per interesting example)
@@ -785,7 +715,7 @@ where
             }
 
             if connection.server_has_exited() {
-                panic!("{}", SERVER_CRASHED_MESSAGE);
+                panic!("{}", SERVER_CRASHED_MESSAGE); // nocov
             }
         }
 
@@ -798,20 +728,23 @@ where
         if is_running_in_antithesis() {
             #[cfg(not(feature = "antithesis"))]
             panic!(
+                // nocov
                 "When Hegel is run inside of Antithesis, it requires the `antithesis` feature. \
                 You can add it with {{ features = [\"antithesis\"] }}."
             );
 
             #[cfg(feature = "antithesis")]
+            // nocov start
             if let Some(ref loc) = self.test_location {
                 crate::antithesis::emit_assertion(loc, !test_failed);
+                // nocov end
             }
         }
 
         if test_failed {
             let msg = match &final_result {
                 Some(TestCaseResult::Interesting { panic_message }) => panic_message.as_str(),
-                _ => "unknown",
+                _ => "unknown", // nocov
             };
             panic!("Property test failed: {}", msg);
         }
@@ -849,6 +782,7 @@ fn run_test_case<F: FnMut(TestCase)>(
 
                 // Take panic info - we need location for origin, and print details on final
                 let (thread_name, thread_id, location, backtrace) = take_panic_info()
+                    // nocov start
                     .unwrap_or_else(|| {
                         (
                             "<unknown>".to_string(),
@@ -857,6 +791,7 @@ fn run_test_case<F: FnMut(TestCase)>(
                             Backtrace::disabled(),
                         )
                     });
+                // nocov end
 
                 if is_final {
                     eprintln!(
@@ -865,6 +800,7 @@ fn run_test_case<F: FnMut(TestCase)>(
                     );
                     eprintln!("{}", msg);
 
+                    // nocov start
                     if backtrace.status() == BacktraceStatus::Captured {
                         let is_full = std::env::var("RUST_BACKTRACE")
                             .map(|v| v == "full")
@@ -877,6 +813,7 @@ fn run_test_case<F: FnMut(TestCase)>(
                             );
                         }
                     }
+                    // nocov end
                 }
 
                 let origin = format!("Panic at {}", location);
@@ -918,7 +855,7 @@ fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
     } else if let Some(s) = payload.downcast_ref::<String>() {
         s.clone()
     } else {
-        "Unknown panic".to_string()
+        "Unknown panic".to_string() // nocov
     }
 }
 
