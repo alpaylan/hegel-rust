@@ -35,8 +35,8 @@ fn cache_dir() -> PathBuf {
     if let Ok(xdg_cache) = std::env::var("XDG_CACHE_HOME") {
         return PathBuf::from(xdg_cache).join("hegel");
     }
-    let home = std::env::var("HOME").expect("HOME environment variable not set");
-    PathBuf::from(home).join(".cache").join("hegel")
+    let home = std::env::home_dir().expect("Could not determine home directory");
+    home.join(".cache").join("hegel")
 }
 
 fn cached_uv_path() -> PathBuf {
