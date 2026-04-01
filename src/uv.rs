@@ -521,11 +521,18 @@ mod tests {
         );
     }
 
+    /// Integration test that exercises the full resolve_uv download path,
+    /// downloading the real uv binary from GitHub. This is the one network-
+    /// dependent test — it verifies the URL construction, SHA-256 checksum,
+    /// and extraction all work end-to-end.
     #[test]
-    fn test_download_uv_to_full_pipeline() {
+    fn test_resolve_uv_downloads_from_github() {
         let temp = tempfile::tempdir().unwrap();
         let cache = temp.path().join("hegel");
-        download_uv_to(&cache);
-        assert!(cache.join("uv").is_file());
+        let cached_uv = cache.join("uv");
+
+        let result = resolve_uv(None, cached_uv.clone(), cache);
+        assert_eq!(result, cached_uv.to_string_lossy());
+        assert!(cached_uv.is_file());
     }
 }
