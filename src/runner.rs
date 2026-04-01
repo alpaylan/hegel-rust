@@ -10,14 +10,16 @@ use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::panic::{self, AssertUnwindSafe, catch_unwind};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, Once};
+use std::time::{Duration, Instant};
 
 const SUPPORTED_PROTOCOL_VERSIONS: (f64, f64) = (0.6, 0.7);
 const HEGEL_SERVER_VERSION: &str = "0.2.3";
 const HEGEL_SERVER_COMMAND_ENV: &str = "HEGEL_SERVER_COMMAND";
 const HEGEL_SERVER_DIR: &str = ".hegel";
-static SERVER_LOG_FILE: std::sync::OnceLock<Mutex<File>> = std::sync::OnceLock::new();
+static SERVER_LOG_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+static LOG_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 static SESSION: std::sync::OnceLock<HegelSession> = std::sync::OnceLock::new();
 
 static PANIC_HOOK_INIT: Once = Once::new();
@@ -65,13 +67,18 @@ impl HegelSession {
         let connection = Connection::new(Box::new(child_stdout), Box::new(child_stdin));
         let mut control = connection.control_channel();
 
+        // Derive the binary path before the handshake so it's available for error messages.
+        let binary_path = std::env::var(HEGEL_SERVER_COMMAND_ENV).ok();
+
         // Handshake
-        let req_id = control
+        let handshake_result = control
             .send_request(HANDSHAKE_STRING.to_vec())
-            .expect("Failed to send version negotiation");
-        let response = control
-            .receive_reply(req_id)
-            .expect("Failed to receive version response");
+            .and_then(|req_id| control.receive_reply(req_id));
+
+        let response = match handshake_result {
+            Ok(r) => r,
+            Err(e) => handle_handshake_failure(&mut child, binary_path.as_deref(), e), // nocov
+        };
 
         let decoded = String::from_utf8_lossy(&response);
         let server_version = match decoded.strip_prefix("Hegel/") {
@@ -254,7 +261,7 @@ fn init_panic_hook() {
 
 fn hegel_command() -> Command {
     if let Ok(override_path) = std::env::var(HEGEL_SERVER_COMMAND_ENV) {
-        return Command::new(override_path); // nocov
+        return Command::new(resolve_hegel_path(&override_path)); // nocov
     }
     let uv_path = crate::uv::find_uv();
     let mut cmd = Command::new(uv_path);
@@ -269,19 +276,136 @@ fn hegel_command() -> Command {
 }
 
 fn server_log_file() -> File {
-    let file = SERVER_LOG_FILE.get_or_init(|| {
-        std::fs::create_dir_all(HEGEL_SERVER_DIR).ok();
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(format!("{HEGEL_SERVER_DIR}/server.log"))
-            .expect("Failed to open server log file");
-        Mutex::new(file)
-    });
-    file.lock()
-        .unwrap()
-        .try_clone()
-        .expect("Failed to clone server log file handle")
+    std::fs::create_dir_all(HEGEL_SERVER_DIR).ok();
+    let pid = std::process::id();
+    let ix = LOG_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = format!("{HEGEL_SERVER_DIR}/server.{pid}-{ix}.log");
+    SERVER_LOG_PATH.set(path.clone()).ok();
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .expect("Failed to open server log file")
+}
+
+fn wait_for_exit(
+    child: &mut std::process::Child,
+    timeout: Duration,
+) -> Option<std::process::ExitStatus> {
+    let start = Instant::now();
+    loop {
+        if let Ok(Some(status)) = child.try_wait() {
+            return Some(status);
+        }
+        if start.elapsed() >= timeout {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn handle_handshake_failure(
+    child: &mut std::process::Child,
+    binary_path: Option<&str>,
+    handshake_err: impl std::fmt::Display,
+) -> ! {
+    let exit_status = wait_for_exit(child, Duration::from_millis(100));
+    let child_still_running = exit_status.is_none();
+    if child_still_running {
+        let _ = child.kill();
+        let _ = child.wait();
+        panic!(
+            "The hegel server failed during startup handshake: {handshake_err}\n\n\
+             The server process did not exit. Possibly bad virtualenv?"
+        );
+    }
+    panic!(
+        "{}",
+        startup_error_message(binary_path, exit_status.unwrap())
+    );
+}
+
+fn startup_error_message(
+    binary_path: Option<&str>,
+    exit_status: std::process::ExitStatus,
+) -> String {
+    let mut parts = Vec::new();
+
+    parts.push("The hegel server failed during startup handshake.".to_string());
+    parts.push(format!("The server process exited with {}.", exit_status));
+
+    // Version detection via --version (only when we have a binary path to check)
+    if let Some(binary_path) = binary_path {
+        let expected_version_string = format!("hegel (version {})", HEGEL_SERVER_VERSION);
+        match Command::new(binary_path).arg("--version").output() {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if stdout != expected_version_string {
+                    parts.push(format!(
+                        "Version mismatch: expected '{}', got '{}'.",
+                        expected_version_string, stdout
+                    ));
+                }
+            }
+            Ok(_) => {
+                parts.push(format!(
+                    "'{}' --version exited unsuccessfully. Is this a hegel binary?",
+                    binary_path
+                ));
+            }
+            Err(e) => {
+                parts.push(format!(
+                    "Could not run '{}' --version: {}. Is this a hegel binary?",
+                    binary_path, e
+                ));
+            }
+        }
+    }
+
+    // Include server log contents
+    if let Some(log_path) = SERVER_LOG_PATH.get() {
+        if let Ok(contents) = std::fs::read_to_string(log_path) {
+            if !contents.trim().is_empty() {
+                let lines: Vec<&str> = contents.lines().collect();
+                let display_lines: Vec<&str> = lines.iter().take(3).copied().collect();
+                let mut log_section =
+                    format!("Server log ({}):\n{}", log_path, display_lines.join("\n"));
+                if lines.len() > 3 {
+                    log_section.push_str(&format!("\n... (see {} for full output)", log_path));
+                }
+                parts.push(log_section);
+            }
+        }
+    }
+
+    parts.join("\n\n")
+}
+
+fn resolve_hegel_path(path: &str) -> String {
+    let p = std::path::Path::new(path);
+    if p.exists() {
+        crate::utils::validate_executable(path);
+        return path.to_string();
+    }
+
+    // Bare name (no '/') — try PATH lookup
+    if !path.contains('/') {
+        if let Some(resolved) = crate::utils::which(path) {
+            crate::utils::validate_executable(&resolved);
+            return resolved;
+        }
+        panic!(
+            "Hegel server binary '{}' not found on PATH. \
+             Check that {} is set correctly, or install hegel-core.",
+            path, HEGEL_SERVER_COMMAND_ENV
+        );
+    }
+
+    panic!(
+        "Hegel server binary not found at '{}'. \
+         Check that {} is set correctly.",
+        path, HEGEL_SERVER_COMMAND_ENV
+    );
 }
 
 /// Health checks that can be suppressed during test execution.
@@ -426,11 +550,9 @@ impl Settings {
     }
 
     /// Set the verbosity level.
-    // nocov start
     pub fn verbosity(mut self, verbosity: Verbosity) -> Self {
         self.verbosity = verbosity;
         self
-        // nocov end
     }
 
     /// Set a fixed seed for reproducibility, or `None` for random.
@@ -870,3 +992,7 @@ fn cbor_encode(value: &Value) -> Vec<u8> {
 fn cbor_decode(bytes: &[u8]) -> Value {
     ciborium::from_reader(bytes).expect("CBOR decoding failed")
 }
+
+#[cfg(test)]
+#[path = "runner_tests.rs"]
+mod tests;

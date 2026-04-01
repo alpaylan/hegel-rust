@@ -193,6 +193,7 @@ pub(crate) mod protocol;
 pub(crate) mod runner;
 pub mod stateful;
 mod test_case;
+pub(crate) mod utils;
 mod uv;
 
 #[doc(hidden)]
