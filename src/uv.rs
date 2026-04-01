@@ -141,40 +141,82 @@ impl Drop for CleanupGuard<'_> {
 mod tests {
     use super::*;
 
+    /// Real release archive names from uv 0.11.2 on GitHub.
+    /// Source: https://github.com/astral-sh/uv/releases/tag/0.11.2
+    const UV_RELEASE_ARCHIVES: &[&str] = &[
+        "uv-aarch64-apple-darwin.tar.gz",
+        "uv-aarch64-pc-windows-msvc.zip",
+        "uv-aarch64-unknown-linux-gnu.tar.gz",
+        "uv-aarch64-unknown-linux-musl.tar.gz",
+        "uv-arm-unknown-linux-musleabihf.tar.gz",
+        "uv-armv7-unknown-linux-gnueabihf.tar.gz",
+        "uv-armv7-unknown-linux-musleabihf.tar.gz",
+        "uv-i686-pc-windows-msvc.zip",
+        "uv-i686-unknown-linux-gnu.tar.gz",
+        "uv-i686-unknown-linux-musl.tar.gz",
+        "uv-powerpc64le-unknown-linux-gnu.tar.gz",
+        "uv-riscv64gc-unknown-linux-gnu.tar.gz",
+        "uv-riscv64gc-unknown-linux-musl.tar.gz",
+        "uv-s390x-unknown-linux-gnu.tar.gz",
+        "uv-x86_64-apple-darwin.tar.gz",
+        "uv-x86_64-pc-windows-msvc.zip",
+        "uv-x86_64-unknown-linux-gnu.tar.gz",
+        "uv-x86_64-unknown-linux-musl.tar.gz",
+    ];
+
+    /// The (arch, os) pairs that archive_name_for supports, using the values
+    /// that std::env::consts::{ARCH, OS} would return on those platforms.
+    const SUPPORTED_PLATFORMS: &[(&str, &str)] = &[
+        ("aarch64", "macos"),
+        ("x86_64", "macos"),
+        ("aarch64", "linux"),
+        ("x86_64", "linux"),
+    ];
+
     #[test]
-    fn test_archive_name_aarch64_macos() {
-        assert_eq!(
-            archive_name_for("aarch64", "macos").unwrap(),
-            "uv-aarch64-apple-darwin.tar.gz"
-        );
+    fn test_all_supported_platforms_have_real_release_archives() {
+        for &(arch, os) in SUPPORTED_PLATFORMS {
+            let name = archive_name_for(arch, os).unwrap();
+            assert!(
+                UV_RELEASE_ARCHIVES.contains(&name.as_str()),
+                "archive_name_for({arch:?}, {os:?}) = {name:?} is not in the uv release"
+            );
+        }
     }
 
     #[test]
-    fn test_archive_name_x86_64_macos() {
-        assert_eq!(
-            archive_name_for("x86_64", "macos").unwrap(),
-            "uv-x86_64-apple-darwin.tar.gz"
-        );
+    fn test_all_release_archives_are_covered() {
+        let supported: Vec<String> = SUPPORTED_PLATFORMS
+            .iter()
+            .map(|&(arch, os)| archive_name_for(arch, os).unwrap())
+            .collect();
+
+        let uncovered: Vec<&&str> = UV_RELEASE_ARCHIVES
+            .iter()
+            .filter(|name| !supported.contains(&name.to_string()))
+            .collect();
+
+        // We only expect to not cover Windows (.zip) and non-musl Linux
+        // variants — we don't need to support every platform uv ships for.
+        for name in &uncovered {
+            assert!(
+                name.ends_with(".zip")
+                    || name.contains("-gnu")
+                    || name.contains("-musleabihf")
+                    || name.contains("-i686-")
+                    || name.contains("-arm-")
+                    || name.contains("-armv7-")
+                    || name.contains("-powerpc64le-")
+                    || name.contains("-riscv64gc-")
+                    || name.contains("-s390x-"),
+                "release archive {name} is not covered by archive_name_for and is not \
+                 an expected exclusion — should it be added as a supported platform?"
+            );
+        }
     }
 
     #[test]
-    fn test_archive_name_aarch64_linux() {
-        assert_eq!(
-            archive_name_for("aarch64", "linux").unwrap(),
-            "uv-aarch64-unknown-linux-musl.tar.gz"
-        );
-    }
-
-    #[test]
-    fn test_archive_name_x86_64_linux() {
-        assert_eq!(
-            archive_name_for("x86_64", "linux").unwrap(),
-            "uv-x86_64-unknown-linux-musl.tar.gz"
-        );
-    }
-
-    #[test]
-    fn test_archive_name_unsupported_platform() {
+    fn test_unsupported_platform_returns_error() {
         let err = archive_name_for("mips", "freebsd").unwrap_err();
         assert!(err.contains("Unsupported platform: mips-freebsd"));
         assert!(err.contains("Install uv manually"));
