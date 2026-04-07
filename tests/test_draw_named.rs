@@ -251,11 +251,7 @@ fn test_macro_shadowing_nested_blocks() {
     );
     assert_eq!(
         lines,
-        vec![
-            "let x_1 = false;",
-            "let x_2 = false;",
-            "let x_3 = false;"
-        ]
+        vec!["let x_1 = false;", "let x_2 = false;", "let x_3 = false;"]
     );
 }
 
@@ -274,11 +270,7 @@ fn test_macro_shadowing_only_in_nested_contexts() {
     );
     assert_eq!(
         lines,
-        vec![
-            "let x_1 = false;",
-            "let x_2 = false;",
-            "let x_3 = false;"
-        ]
+        vec!["let x_1 = false;", "let x_2 = false;", "let x_3 = false;"]
     );
 }
 
@@ -296,11 +288,7 @@ fn test_macro_repeatable_skips_taken_name() {
     );
     assert_eq!(
         lines,
-        vec![
-            "let x_1 = false;",
-            "let x_2 = false;",
-            "let x_3 = false;"
-        ]
+        vec!["let x_1 = false;", "let x_2 = false;", "let x_3 = false;"]
     );
 }
 

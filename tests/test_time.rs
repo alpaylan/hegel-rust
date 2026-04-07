@@ -13,10 +13,9 @@ fn test_durations_default() {
 fn test_durations_bounded() {
     let min = Duration::from_secs(5);
     let max = Duration::from_secs(60);
-    assert_all_examples(
-        gs::durations().min_value(min).max_value(max),
-        move |d| *d >= min && *d <= max,
-    );
+    assert_all_examples(gs::durations().min_value(min).max_value(max), move |d| {
+        *d >= min && *d <= max
+    });
 }
 
 #[test]
