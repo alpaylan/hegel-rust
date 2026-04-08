@@ -184,11 +184,13 @@
 
 #![forbid(future_incompatible)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(feature = "native-engine", allow(dead_code, unused_imports))]
 
 pub(crate) mod antithesis;
 pub(crate) mod cbor_utils;
 pub(crate) mod control;
 pub mod generators;
+pub mod native_engine;
 pub(crate) mod protocol;
 pub(crate) mod runner;
 pub mod stateful;

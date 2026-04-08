@@ -1,3 +1,5 @@
+#[cfg(feature = "native-engine")]
+use crate::cbor_utils::{as_bool, map_get};
 use crate::cbor_utils::{cbor_map, map_insert};
 use crate::generators::Generator;
 use crate::protocol::{Connection, SERVER_CRASHED_MESSAGE, Stream};
@@ -57,10 +59,20 @@ pub(crate) const ASSUME_FAIL_STRING: &str = "__HEGEL_ASSUME_FAIL";
 /// assumption failures apart from server-initiated data exhaustion.
 pub(crate) const STOP_TEST_STRING: &str = "__HEGEL_STOP_TEST";
 
+pub(crate) enum TestCaseBackend {
+    Protocol {
+        connection: Arc<Connection>,
+        stream: Stream,
+    },
+    #[cfg(feature = "native-engine")]
+    Native {
+        case_id: crate::native_engine::CaseId,
+        span_stack: Vec<crate::native_engine::SpanId>,
+    },
+}
+
 pub(crate) struct TestCaseGlobalData {
-    #[allow(dead_code)]
-    connection: Arc<Connection>,
-    stream: Stream,
+    backend: TestCaseBackend,
     verbosity: Verbosity,
     is_last_run: bool,
     test_aborted: bool,
@@ -127,8 +139,39 @@ impl TestCase {
         };
         TestCase {
             global: Rc::new(RefCell::new(TestCaseGlobalData {
-                connection,
-                stream,
+                backend: TestCaseBackend::Protocol { connection, stream },
+                verbosity,
+                is_last_run,
+                test_aborted: false,
+                named_draw_counts: HashMap::new(),
+                named_draw_repeatable: HashMap::new(),
+                allocated_display_names: HashSet::new(),
+            })),
+            local: RefCell::new(TestCaseLocalData {
+                span_depth: 0,
+                indent: 0,
+                on_draw,
+            }),
+        }
+    }
+
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn new_native(
+        case_id: crate::native_engine::CaseId,
+        verbosity: Verbosity,
+        is_last_run: bool,
+    ) -> Self {
+        let on_draw: Rc<dyn Fn(&str)> = if is_last_run {
+            Rc::new(|msg| eprintln!("{}", msg))
+        } else {
+            Rc::new(|_| {})
+        };
+        TestCase {
+            global: Rc::new(RefCell::new(TestCaseGlobalData {
+                backend: TestCaseBackend::Native {
+                    case_id,
+                    span_stack: Vec::new(),
+                },
                 verbosity,
                 is_last_run,
                 test_aborted: false,
@@ -355,67 +398,77 @@ impl TestCase {
         }
         let debug = *PROTOCOL_DEBUG || global.verbosity == Verbosity::Debug;
 
-        let mut entries = vec![(
-            Value::Text("command".to_string()),
-            Value::Text(command.to_string()),
-        )];
+        match &mut global.backend {
+            TestCaseBackend::Protocol { connection, stream } => {
+                let mut entries = vec![(
+                    Value::Text("command".to_string()),
+                    Value::Text(command.to_string()),
+                )];
 
-        if let Value::Map(map) = payload {
-            for (k, v) in map {
-                entries.push((k.clone(), v.clone()));
-            }
-        }
-
-        let request = Value::Map(entries);
-
-        if debug {
-            eprintln!("REQUEST: {:?}", request); // nocov
-        }
-
-        let result = global.stream.request_cbor(&request);
-        drop(global);
-
-        match result {
-            Ok(response) => {
-                if debug {
-                    eprintln!("RESPONSE: {:?}", response); // nocov
-                }
-                Ok(response)
-            }
-            Err(e) => {
-                let error_msg = e.to_string();
-                if error_msg.contains("overflow")
-                    || error_msg.contains("StopTest")
-                    || error_msg.contains("stream is closed")
-                {
-                    if debug {
-                        eprintln!("RESPONSE: StopTest/overflow"); // nocov
+                if let Value::Map(map) = payload {
+                    for (k, v) in map {
+                        entries.push((k.clone(), v.clone()));
                     }
-                    let mut global = self.global.borrow_mut();
-                    global.stream.mark_closed();
-                    global.test_aborted = true;
-                    drop(global);
-                    Err(StopTestError)
-                } else if error_msg.contains("FlakyStrategyDefinition")
-                    // nocov start
-                    || error_msg.contains("FlakyReplay")
-                // nocov end
-                {
-                    // Abort the test case; the server will report the flaky
-                    // error in the test_done results, which runner.rs handles.
-                    let mut global = self.global.borrow_mut();
-                    global.stream.mark_closed();
-                    global.test_aborted = true;
-                    drop(global);
-                    Err(StopTestError)
-                // nocov start
-                } else if self.global.borrow().connection.server_has_exited() {
-                    panic!("{}", SERVER_CRASHED_MESSAGE);
-                    // nocov end
-                } else {
-                    panic!("Failed to communicate with Hegel: {}", e); // nocov
+                }
+
+                let request = Value::Map(entries);
+
+                if debug {
+                    eprintln!("REQUEST: {:?}", request); // nocov
+                }
+
+                let result = stream.request_cbor(&request);
+
+                match result {
+                    Ok(response) => {
+                        if debug {
+                            eprintln!("RESPONSE: {:?}", response); // nocov
+                        }
+                        Ok(response)
+                    }
+                    Err(e) => {
+                        let error_msg = e.to_string();
+                        if error_msg.contains("overflow")
+                            || error_msg.contains("StopTest")
+                            || error_msg.contains("stream is closed")
+                        {
+                            if debug {
+                                eprintln!("RESPONSE: StopTest/overflow"); // nocov
+                            }
+                            stream.mark_closed();
+                            global.test_aborted = true;
+                            Err(StopTestError)
+                        } else if error_msg.contains("FlakyStrategyDefinition")
+                            // nocov start
+                            || error_msg.contains("FlakyReplay")
+                        // nocov end
+                        {
+                            // Abort the test case; the server will report the flaky
+                            // error in the test_done results, which runner.rs handles.
+                            stream.mark_closed();
+                            global.test_aborted = true;
+                            Err(StopTestError)
+                        // nocov start
+                        } else if connection.server_has_exited() {
+                            panic!("{}", SERVER_CRASHED_MESSAGE);
+                            // nocov end
+                        } else {
+                            panic!("Failed to communicate with Hegel: {}", e); // nocov
+                        }
+                    }
                 }
             }
+            #[cfg(feature = "native-engine")]
+            TestCaseBackend::Native {
+                case_id,
+                span_stack,
+            } => match native_request_dispatch(*case_id, span_stack, command, payload, debug) {
+                Ok(response) => Ok(response),
+                Err(StopTestError) => {
+                    global.test_aborted = true;
+                    Err(StopTestError)
+                }
+            },
         }
     }
 
@@ -427,8 +480,153 @@ impl TestCase {
 
     pub(crate) fn send_mark_complete(&self, mark_complete: &Value) {
         let mut global = self.global.borrow_mut();
-        let _ = global.stream.request_cbor(mark_complete);
-        let _ = global.stream.close();
+        match &mut global.backend {
+            TestCaseBackend::Protocol { stream, .. } => {
+                let _ = stream.request_cbor(mark_complete);
+                let _ = stream.close();
+            }
+            #[cfg(feature = "native-engine")]
+            TestCaseBackend::Native { .. } => {}
+        }
+    }
+}
+
+#[cfg(feature = "native-engine")]
+fn parse_i64_field(payload: &Value, key: &str) -> i64 {
+    let value = map_get(payload, key).unwrap_or_else(|| panic!("missing field `{}`", key));
+    match value {
+        Value::Integer(i) => {
+            let n: i128 = (*i).into();
+            i64::try_from(n).unwrap_or_else(|_| panic!("field `{}` out of range for i64", key))
+        }
+        _ => panic!("field `{}` must be an integer", key),
+    }
+}
+
+#[cfg(feature = "native-engine")]
+fn parse_i128_field(payload: &Value, key: &str) -> i128 {
+    let value = map_get(payload, key).unwrap_or_else(|| panic!("missing field `{}`", key));
+    match value {
+        Value::Integer(i) => (*i).into(),
+        _ => panic!("field `{}` must be an integer", key),
+    }
+}
+
+#[cfg(feature = "native-engine")]
+fn native_request_dispatch(
+    case_id: crate::native_engine::CaseId,
+    span_stack: &mut Vec<crate::native_engine::SpanId>,
+    command: &str,
+    payload: &Value,
+    debug: bool,
+) -> Result<Value, StopTestError> {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match command {
+        "generate" => {
+            let schema = map_get(payload, "schema")
+                .unwrap_or_else(|| panic!("missing field `schema`"))
+                .clone();
+            crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::generate(engine, case_id, &schema)
+            })
+        }
+        "start_span" => {
+            let label = map_get(payload, "label")
+                .and_then(crate::cbor_utils::as_u64)
+                .unwrap_or_else(|| panic!("missing/invalid field `label`"));
+            let span_id = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::start_span(engine, case_id, label)
+            });
+            span_stack.push(span_id);
+            Value::Null
+        }
+        "stop_span" => {
+            let discard = map_get(payload, "discard")
+                .and_then(as_bool)
+                .unwrap_or_else(|| panic!("missing/invalid field `discard`"));
+            let span_id = span_stack
+                .pop()
+                .unwrap_or_else(|| panic!("stop_span without matching start_span"));
+            crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::stop_span(engine, case_id, span_id, discard);
+            });
+            Value::Null
+        }
+        "new_collection" => {
+            let min_size = map_get(payload, "min_size")
+                .and_then(crate::cbor_utils::as_u64)
+                .unwrap_or_else(|| panic!("missing/invalid field `min_size`"))
+                as usize;
+            let max_size = map_get(payload, "max_size")
+                .and_then(crate::cbor_utils::as_u64)
+                .map(|v| v as usize);
+            let collection_id = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::new_collection(engine, case_id, min_size, max_size)
+            });
+            Value::from(collection_id.0)
+        }
+        "collection_more" => {
+            let collection_id =
+                crate::native_engine::CollectionId(parse_i64_field(payload, "collection_id"));
+            let result = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::collection_more(engine, case_id, collection_id)
+            });
+            Value::Bool(result)
+        }
+        "collection_reject" => {
+            let collection_id =
+                crate::native_engine::CollectionId(parse_i64_field(payload, "collection_id"));
+            let why = map_get(payload, "why").and_then(crate::cbor_utils::as_text);
+            crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::collection_reject(engine, case_id, collection_id, why);
+            });
+            Value::Null
+        }
+        "new_pool" => {
+            let pool_id = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::new_pool(engine, case_id)
+            });
+            Value::from(pool_id.0)
+        }
+        "pool_add" => {
+            let pool_id = crate::native_engine::PoolId(parse_i128_field(payload, "pool_id"));
+            let variable_id = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::pool_add(engine, case_id, pool_id)
+            });
+            Value::from(variable_id)
+        }
+        "pool_generate" => {
+            let pool_id = crate::native_engine::PoolId(parse_i128_field(payload, "pool_id"));
+            let consume = map_get(payload, "consume")
+                .and_then(as_bool)
+                .unwrap_or_else(|| panic!("missing/invalid field `consume`"));
+            let variable_id = crate::native_engine::with_global_engine(|engine| {
+                crate::native_engine::pool_generate(engine, case_id, pool_id, consume)
+            });
+            Value::from(variable_id)
+        }
+        _ => panic!("Unsupported native test command: {}", command),
+    }));
+
+    match result {
+        Ok(response) => {
+            if debug {
+                eprintln!("RESPONSE: {:?}", response); // nocov
+            }
+            Ok(response)
+        }
+        Err(payload) => {
+            if let Some(msg) = payload.downcast_ref::<&str>() {
+                if *msg == STOP_TEST_STRING {
+                    return Err(StopTestError);
+                }
+            }
+            if let Some(msg) = payload.downcast_ref::<String>() {
+                if msg == STOP_TEST_STRING {
+                    return Err(StopTestError);
+                }
+            }
+            std::panic::resume_unwind(payload)
+        }
     }
 }
 
