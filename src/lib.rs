@@ -333,3 +333,5 @@ pub use hegel_macros::test;
 #[doc(hidden)]
 pub use runner::hegel;
 pub use runner::{HealthCheck, Hegel, Settings, Verbosity};
+#[cfg(feature = "native-engine")]
+pub use runner::{NativeReplayTrace, NativeRunTrace};

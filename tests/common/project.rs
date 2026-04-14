@@ -138,6 +138,28 @@ hegeltest = {{ path = "{path}"{features} }}
             .current_dir(&self.project_path)
             .env("CARGO_TARGET_DIR", cached_target);
 
+        let env_is_overridden = |key: &str| -> bool {
+            self.env_vars.iter().any(|(k, _)| k == key) || self.env_removes.iter().any(|k| k == key)
+        };
+
+        // Isolate uv/XDG state from host HOME locations, which may be
+        // inaccessible under sandboxed test runners.
+        if !env_is_overridden("UV_CACHE_DIR") {
+            let uv_cache_dir = self.project_path.join(".uv-cache");
+            std::fs::create_dir_all(&uv_cache_dir).unwrap();
+            cmd.env("UV_CACHE_DIR", uv_cache_dir);
+        }
+        if !env_is_overridden("XDG_DATA_HOME") {
+            let xdg_data_home = self.project_path.join(".xdg-data");
+            std::fs::create_dir_all(&xdg_data_home).unwrap();
+            cmd.env("XDG_DATA_HOME", xdg_data_home);
+        }
+        if !env_is_overridden("XDG_STATE_HOME") {
+            let xdg_state_home = self.project_path.join(".xdg-state");
+            std::fs::create_dir_all(&xdg_state_home).unwrap();
+            cmd.env("XDG_STATE_HOME", xdg_state_home);
+        }
+
         for key in &self.env_removes {
             cmd.env_remove(key);
         }

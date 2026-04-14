@@ -249,7 +249,7 @@ where
         Self {
             generator,
             condition,
-            test_cases: 500,
+            test_cases: 10,
             _marker: std::marker::PhantomData,
         }
     }

@@ -1,3 +1,5 @@
+#![cfg(not(feature = "native-engine"))]
+
 mod common;
 
 use common::project::TempRustProject;

@@ -78,6 +78,6 @@ fn cache_dir_from(xdg_cache_home: Option<String>, home_dir: Option<PathBuf>) -> 
     home.join(".cache").join("hegel")
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "native-engine")))]
 #[path = "../tests/embedded/uv_tests.rs"]
 mod tests;

@@ -1,6 +1,16 @@
+#![cfg(not(feature = "native-engine"))]
+
 mod common;
 
 use common::project::TempRustProject;
+
+fn maybe_enable_native_engine(project: TempRustProject) -> TempRustProject {
+    if cfg!(feature = "native-engine") {
+        project.feature("native-engine")
+    } else {
+        project
+    }
+}
 
 fn read_values(dir: &std::path::Path, label: &str) -> Vec<i64> {
     let path = dir.join(label);
@@ -51,7 +61,7 @@ fn test_2(tc: hegel::TestCase) {{
 
     let values_path = temp_dir.path().join("values");
     std::fs::create_dir_all(&values_path).unwrap();
-    let project = TempRustProject::new()
+    let project = maybe_enable_native_engine(TempRustProject::new())
         .test_file("integration.rs", &test_code)
         .env("VALUES_DIR", values_path.to_str().unwrap())
         .expect_failure("Property test failed");

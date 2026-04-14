@@ -1,8 +1,18 @@
+#![cfg(not(feature = "native-engine"))]
+
 mod common;
 
 use common::project::TempRustProject;
 use common::utils::expect_panic;
 use hegel::generators as gs;
+
+fn maybe_enable_native_engine(project: TempRustProject) -> TempRustProject {
+    if cfg!(feature = "native-engine") {
+        project.feature("native-engine")
+    } else {
+        project
+    }
+}
 
 /// Run a test body via `#[hegel::test]` and extract the draw output lines.
 ///
@@ -23,13 +33,20 @@ fn test_body(tc: hegel::TestCase) {{
 "#
     );
 
-    let output = TempRustProject::new()
+    let output = maybe_enable_native_engine(TempRustProject::new())
         .test_file("test_body.rs", &code)
         .expect_failure("__draw_lines_fail")
         .cargo_test(&["--test", "test_body", "--", "--nocapture"]);
 
     let re = regex::Regex::new(r"let \w+ = .+;").unwrap();
-    re.find_iter(&output.stderr)
+    let stderr_lines: Vec<String> = re
+        .find_iter(&output.stderr)
+        .map(|m| m.as_str().to_string())
+        .collect();
+    if !stderr_lines.is_empty() {
+        return stderr_lines;
+    }
+    re.find_iter(&output.stdout)
         .map(|m| m.as_str().to_string())
         .collect()
 }

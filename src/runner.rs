@@ -616,6 +616,26 @@ pub struct Hegel<F> {
     settings: Settings,
 }
 
+#[cfg(feature = "native-engine")]
+#[derive(Debug, Clone)]
+pub struct NativeReplayTrace {
+    pub status: crate::native_engine::CaseStatus,
+    pub buffer: Vec<u8>,
+    pub typed_nodes: Vec<crate::native_engine::choice::ChoiceNode>,
+    pub forced_choices: Option<Vec<crate::native_engine::choice::ChoiceValue>>,
+}
+
+#[cfg(feature = "native-engine")]
+#[derive(Debug, Clone)]
+pub struct NativeRunTrace {
+    pub executed_cases: u64,
+    pub first_executed_case: Option<crate::native_engine::CompletedCase>,
+    pub pre_shrink_best: Option<crate::native_engine::CompletedCase>,
+    pub first_generation_interesting: Option<crate::native_engine::CompletedCase>,
+    pub final_shrunk_replay: Option<NativeReplayTrace>,
+    pub summary: crate::native_engine::RunSummary,
+}
+
 impl<F> Hegel<F>
 where
     F: FnMut(TestCase),
@@ -883,8 +903,21 @@ where
         }
     }
 
+    /// Run with the native engine and return shrinking trace data.
+    ///
+    /// This is intended for parity debugging and test harnesses.
+    #[cfg(feature = "native-engine")]
+    pub fn run_with_native_trace(self) -> NativeRunTrace {
+        self.run_native_impl(false)
+    }
+
     #[cfg(feature = "native-engine")]
     fn run_native(self) {
+        let _ = self.run_native_impl(true);
+    }
+
+    #[cfg(feature = "native-engine")]
+    fn run_native_impl(self, panic_on_failure: bool) -> NativeRunTrace {
         use crate::native_engine::{
             CaseStatus, DatabaseMode, DrawRecord, EngineSettings, HealthCheckName, TestMetadata,
         };
@@ -942,13 +975,43 @@ where
                 .collect(),
         };
 
+        let total_cases = settings.test_cases;
+        let skip_flaky_replay_for_parity =
+            std::env::var_os("HEGEL_SHRINK_PARITY_COLLECT").is_some();
         let mut test_fn = test_fn;
+        let mut executed_cases = 0u64;
+        let mut first_completed_case: Option<crate::native_engine::CompletedCase> = None;
+        let mut flaky_replay_scheduled = false;
+        let mut flaky_replay_pending = false;
+        let mut native_flaky: Option<String> = None;
+        let mut pre_shrink_best: Option<crate::native_engine::CompletedCase> = None;
+        let mut first_generation_interesting: Option<crate::native_engine::CompletedCase> = None;
+        let mut final_shrunk_replay: Option<NativeReplayTrace> = None;
 
         crate::native_engine::with_global_engine(|engine| {
             crate::native_engine::run_test(engine, settings, metadata);
         });
 
         loop {
+            println!("Executing test case {}/{}", executed_cases + 1, total_cases); // nocov
+            if !skip_flaky_replay_for_parity
+                && !flaky_replay_scheduled
+                && total_cases >= 2
+                && executed_cases + 1 == total_cases
+                && let Some(original_case) = first_completed_case.as_ref()
+            {
+                let replay_buffer = original_case.buffer.clone();
+                crate::native_engine::with_global_engine(|engine| {
+                    let run = engine
+                        .active_run
+                        .as_mut()
+                        .expect("active run should exist while native loop is running");
+                    run.replay_buffers.insert(0, replay_buffer);
+                });
+                flaky_replay_scheduled = true;
+                flaky_replay_pending = true;
+            }
+
             let case_id = crate::native_engine::with_global_engine(|engine| {
                 crate::native_engine::next_case(engine)
             });
@@ -961,14 +1024,107 @@ where
                 execute_case_native(&mut test_fn, case_id, verbosity);
             let elapsed = started.elapsed();
 
-            crate::native_engine::with_global_engine(|engine| {
+            let completed_case = crate::native_engine::with_global_engine(|engine| {
                 crate::native_engine::mark_complete(engine, case_id, status, elapsed, draws);
+                engine
+                    .active_run
+                    .as_ref()
+                    .and_then(|run| run.completed.last())
+                    .cloned()
             });
+
+            if first_completed_case.is_none() {
+                first_completed_case = completed_case.clone();
+            }
+            if first_generation_interesting.is_none()
+                && completed_case
+                    .as_ref()
+                    .is_some_and(|case| matches!(case.status, CaseStatus::Interesting { .. }))
+            {
+                first_generation_interesting = completed_case.clone();
+            }
+            if skip_flaky_replay_for_parity
+                && completed_case
+                    .as_ref()
+                    .is_some_and(|case| matches!(case.status, CaseStatus::Interesting { .. }))
+            {
+                executed_cases = executed_cases.saturating_add(1);
+                break;
+            }
+            if flaky_replay_pending {
+                if let (Some(original), Some(replayed)) =
+                    (first_completed_case.as_ref(), completed_case.as_ref())
+                {
+                    native_flaky = crate::native_engine::detect_flaky(original, replayed);
+                }
+                flaky_replay_pending = false;
+            }
+            executed_cases = executed_cases.saturating_add(1);
         }
 
-        let summary = crate::native_engine::with_global_engine(crate::native_engine::finish_run);
+        let (best_case, derandomized_run) = crate::native_engine::with_global_engine(|engine| {
+            let run = engine
+                .active_run
+                .as_ref()
+                .expect("active run should exist while native loop is running");
+            let best_case = run
+                .completed
+                .iter()
+                .filter(|case| matches!(case.status, CaseStatus::Interesting { .. }))
+                .min_by(|left, right| {
+                    crate::native_engine::compare_typed_nodes_shortlex(
+                        &left.typed_nodes,
+                        &right.typed_nodes,
+                    )
+                })
+                .cloned();
+            (best_case, run.settings.derandomize)
+        });
 
-        if is_running_in_antithesis() {
+        if let Some(best_case) = best_case {
+            pre_shrink_best = Some(best_case.clone());
+            if derandomized_run {
+                let (best_buffer, _, best_forced_choices) = shrink_interesting_buffer_native(
+                    &mut test_fn,
+                    verbosity,
+                    best_case.buffer,
+                    best_case.typed_nodes,
+                    best_case.spans,
+                );
+                let replay = replay_buffer_native(
+                    &mut test_fn,
+                    verbosity,
+                    best_buffer,
+                    best_forced_choices.clone(),
+                );
+                final_shrunk_replay = Some(NativeReplayTrace {
+                    status: replay.status,
+                    buffer: replay.buffer,
+                    typed_nodes: replay.typed_nodes,
+                    forced_choices: best_forced_choices,
+                });
+            }
+        }
+
+        let mut summary =
+            crate::native_engine::with_global_engine(crate::native_engine::finish_run);
+        if summary.flaky.is_none() {
+            summary.flaky = native_flaky;
+        }
+        if summary.flaky.is_some() {
+            summary.passed = false;
+        }
+
+        let trace = NativeRunTrace {
+            executed_cases,
+            first_executed_case: first_completed_case,
+            pre_shrink_best,
+            first_generation_interesting,
+            final_shrunk_replay,
+            summary: summary.clone(),
+        };
+
+        if panic_on_failure && is_running_in_antithesis() {
             #[cfg(not(feature = "antithesis"))]
             panic!(
                 "When Hegel is run inside of Antithesis, it requires the `antithesis` feature. \
@@ -981,21 +1137,27 @@ where
             }
         }
 
-        if let Some(error_msg) = summary.error {
-            panic!("Native engine error: {}", error_msg);
+        if panic_on_failure {
+            if let Some(error_msg) = summary.error {
+                if summary.interesting_test_cases > 0 {
+                    panic!("Property test failed: {}", error_msg);
+                }
+                panic!("Native engine error: {}", error_msg);
+            }
+            if let Some(failure_msg) = summary.health_check_failure {
+                panic!("Health check failure:\n{}", failure_msg);
+            }
+            if let Some(flaky_msg) = summary.flaky {
+                panic!("Flaky test detected: {}", flaky_msg);
+            }
+            if !summary.passed {
+                panic!(
+                    "Property test failed: native engine reported {} interesting test case(s)",
+                    summary.interesting_test_cases
+                );
+            }
         }
-        if let Some(failure_msg) = summary.health_check_failure {
-            panic!("Health check failure:\n{}", failure_msg);
-        }
-        if let Some(flaky_msg) = summary.flaky {
-            panic!("Flaky test detected: {}", flaky_msg);
-        }
-        if !summary.passed {
-            panic!(
-                "Property test failed: native engine reported {} interesting test case(s)",
-                summary.interesting_test_cases
-            );
-        }
+        trace
     }
 }
 
@@ -1015,8 +1177,17 @@ fn execute_case_native<F: FnMut(TestCase)>(
         Ok(()) => crate::native_engine::CaseStatus::Valid,
         Err(e) => {
             let msg = panic_message(&e);
-            if msg == ASSUME_FAIL_STRING || msg == STOP_TEST_STRING {
+            if msg == ASSUME_FAIL_STRING {
                 crate::native_engine::CaseStatus::Invalid
+            } else if msg == STOP_TEST_STRING {
+                let stopped_because_overrun = crate::native_engine::with_global_engine(|engine| {
+                    crate::native_engine::case_stopped_because_overrun(engine, case_id)
+                });
+                if stopped_because_overrun {
+                    crate::native_engine::CaseStatus::Overrun
+                } else {
+                    crate::native_engine::CaseStatus::Invalid
+                }
             } else {
                 let location = take_panic_info()
                     .map(|(_, _, loc, _)| loc)
@@ -1029,6 +1200,78 @@ fn execute_case_native<F: FnMut(TestCase)>(
         }
     };
     (status, Vec::new())
+}
+
+#[cfg(feature = "native-engine")]
+fn replay_buffer_native<F: FnMut(TestCase)>(
+    test_fn: &mut F,
+    verbosity: Verbosity,
+    buffer: Vec<u8>,
+    forced_choices: Option<Vec<crate::native_engine::choice::ChoiceValue>>,
+) -> crate::native_engine::shrink::ReplayResult {
+    let case_id = crate::native_engine::with_global_engine(|engine| {
+        let run = engine
+            .active_run
+            .as_mut()
+            .expect("native replay requested without an active run");
+        run.replay_buffers.insert(0, buffer);
+        crate::native_engine::next_case(engine).expect("expected replay case to be scheduled")
+    });
+    if let Some(forced_choices) = forced_choices {
+        crate::native_engine::with_global_engine(|engine| {
+            crate::native_engine::set_case_forced_choices(engine, case_id, forced_choices);
+        });
+    }
+
+    let started = Instant::now();
+    let (status, draws) = execute_case_native(test_fn, case_id, verbosity);
+    crate::native_engine::with_global_engine(|engine| {
+        let (buffer, typed_nodes, spans) = engine
+            .cases
+            .get(&case_id)
+            .map(|case| {
+                (
+                    case.bytes[..case.cursor.min(case.bytes.len())].to_vec(),
+                    case.typed.nodes.clone(),
+                    case.spans.clone(),
+                )
+            })
+            .unwrap_or_default();
+        crate::native_engine::mark_complete(engine, case_id, status, started.elapsed(), draws);
+        crate::native_engine::shrink::ReplayResult {
+            status: engine
+                .active_run
+                .as_ref()
+                .and_then(|run| run.completed.last())
+                .map(|case| case.status.clone())
+                .unwrap_or(crate::native_engine::CaseStatus::Invalid),
+            buffer,
+            typed_nodes,
+            spans,
+        }
+    })
+}
+
+#[cfg(feature = "native-engine")]
+fn shrink_interesting_buffer_native<F: FnMut(TestCase)>(
+    test_fn: &mut F,
+    verbosity: Verbosity,
+    best: Vec<u8>,
+    best_typed_nodes: Vec<crate::native_engine::choice::ChoiceNode>,
+    best_spans: Vec<crate::native_engine::SpanState>,
+) -> (
+    Vec<u8>,
+    Vec<crate::native_engine::choice::ChoiceNode>,
+    Option<Vec<crate::native_engine::choice::ChoiceValue>>,
+) {
+    crate::native_engine::shrink::shrink_interesting_buffer_with_passes(
+        best,
+        best_typed_nodes,
+        best_spans,
+        &mut |buffer, forced_choices| {
+            replay_buffer_native(test_fn, verbosity, buffer.to_vec(), forced_choices)
+        },
+    )
 }
 
 enum TestCaseResult {
