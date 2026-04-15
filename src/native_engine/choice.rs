@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use crate::native_engine::{
     BUFFER_SIZE,
-    floats::{choice_permitted_float, float_to_lex, lex_to_float, make_float_clamper},
+    floats::{
+        choice_permitted_float, float_to_int, float_to_lex, lex_to_float, make_float_clamper,
+    },
     intervalset::IntervalSet,
     utils::{zigzag_index, zigzag_value},
 };
@@ -66,6 +68,19 @@ pub enum ChoiceValue {
     Float(f64),
     Bytes(Vec<u8>),
     String(String),
+}
+
+impl Eq for ChoiceValue {}
+impl Hash for ChoiceValue {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Boolean(b) => b.hash(state),
+            Self::Integer(i) => i.hash(state),
+            Self::Float(f) => float_to_int(*f, 64).hash(state),
+            Self::Bytes(bytes) => bytes.hash(state),
+            Self::String(s) => s.hash(state),
+        }
+    }
 }
 
 /// Single recorded typed choice.

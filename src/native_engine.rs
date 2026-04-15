@@ -57,7 +57,7 @@ static GLOBAL_ENGINE_STATE: OnceLock<Mutex<EngineState>> = OnceLock::new();
 #[cfg(feature = "native-engine")]
 pub mod choice;
 #[cfg(feature = "native-engine")]
-pub mod radix_tree;
+pub mod datatree;
 #[cfg(feature = "native-engine")]
 pub mod shrink;
 
@@ -216,13 +216,13 @@ pub struct RunState {
     pub replay_buffers: Vec<Vec<u8>>,
     pub db_examples_loaded: usize,
     pub constant_pools: HypothesisConstantPools,
-    pub radix_tree: radix_tree::DataTree,
+    pub radix_tree: datatree::DataTree,
     pub cached_simplest_probes: HashMap<String, CachedSimplestProbeResult>,
     pub pending_random_prefixes: VecDeque<PendingRandomPrefixCase>,
     pub consecutive_zero_extend_is_invalid: usize,
     pub mutation_data_cache: HashMap<String, MutationCandidateData>,
     pub pending_mutation_state: Option<PendingMutationState>,
-    pub(crate) novel_prefix_children_cache: HashMap<String, radix_tree::ChildrenCacheValue>,
+    pub(crate) novel_prefix_children_cache: HashMap<String, datatree::ChildrenCacheValue>,
     pub last_generate_novel_prefix_trace: Option<Vec<String>>,
 }
 
@@ -955,11 +955,11 @@ fn cached_mutation_attempt_outcome(
     run: &RunState,
     attempt: &[ChoiceValue],
 ) -> CachedMutationOutcome {
-    let (rewritten, status) = radix_tree::rewrite_prefix(&run.radix_tree, attempt);
+    let (rewritten, status) = datatree::rewrite_prefix(&run.radix_tree, attempt);
     let Some(status) = status else {
         return CachedMutationOutcome::Novel;
     };
-    if matches!(status, radix_tree::RewriteStatus::Overrun) {
+    if matches!(status, datatree::RewriteStatus::Overrun) {
         return CachedMutationOutcome::Overrun;
     }
 
@@ -1303,7 +1303,7 @@ pub fn run_test(engine: &mut EngineState, settings: EngineSettings, metadata: Te
         replay_buffers,
         db_examples_loaded,
         constant_pools: todo!(),
-        radix_tree: radix_tree::DataTree::default(),
+        radix_tree: datatree::DataTree::default(),
         cached_simplest_probes: HashMap::new(),
         pending_random_prefixes: VecDeque::new(),
         consecutive_zero_extend_is_invalid: 0,
@@ -1328,10 +1328,10 @@ pub fn next_case(engine: &mut EngineState) -> Option<CaseId> {
         PendingFollowup {
             prefix: Vec<ChoiceValue>,
             max_choices: usize,
-            radix_tree: radix_tree::DataTree,
+            radix_tree: datatree::DataTree,
         },
         NovelPrefix {
-            radix_tree: radix_tree::DataTree,
+            radix_tree: datatree::DataTree,
             run_zero_extend_probe: bool,
         },
     }
@@ -1442,14 +1442,14 @@ pub fn next_case(engine: &mut EngineState) -> Option<CaseId> {
                 prefix,
                 max_choices,
                 radix_tree,
-            } => match radix_tree::simulate_followup_prefix(
+            } => match datatree::simulate_followup_prefix(
                 engine,
                 &radix_tree,
                 &prefix,
                 max_choices,
             ) {
-                radix_tree::FollowupSimulation::Predictable => continue,
-                radix_tree::FollowupSimulation::Novel { prefix } => FreshMode::RandomFollowup {
+                datatree::FollowupSimulation::Predictable => continue,
+                datatree::FollowupSimulation::Novel { prefix } => FreshMode::RandomFollowup {
                     prefix,
                     max_choices,
                 },
@@ -1458,7 +1458,7 @@ pub fn next_case(engine: &mut EngineState) -> Option<CaseId> {
                 radix_tree,
                 run_zero_extend_probe,
             } => {
-                let prefix = radix_tree::generate_novel_prefix(engine, &radix_tree);
+                let prefix = datatree::generate_novel_prefix(engine, &radix_tree);
                 let generated_prefix_trace = engine
                     .active_run
                     .as_mut()
@@ -1729,7 +1729,7 @@ pub fn mark_complete(
         status_for_flow.clone(),
     );
     let typed_node_count = typed_nodes.len();
-    radix_tree::record_case(&mut run.radix_tree, &typed_nodes, &status_for_flow);
+    datatree::record_case(&mut run.radix_tree, &typed_nodes, &status_for_flow);
     let tree_signature = radix_tree_signature(&run.radix_tree);
 
     run.completed.push(CompletedCase {
@@ -3671,10 +3671,10 @@ mod tests {
         ]
     }
 
-    fn followup_simulation_json(sim: super::radix_tree::FollowupSimulation) -> serde_json::Value {
+    fn followup_simulation_json(sim: super::datatree::FollowupSimulation) -> serde_json::Value {
         match sim {
-            super::radix_tree::FollowupSimulation::Predictable => json!({"kind": "predictable"}),
-            super::radix_tree::FollowupSimulation::Novel { prefix } => json!({
+            super::datatree::FollowupSimulation::Predictable => json!({"kind": "predictable"}),
+            super::datatree::FollowupSimulation::Novel { prefix } => json!({
                 "kind": "novel",
                 "prefix": prefix.iter().map(probe_value_token).collect::<Vec<_>>(),
             }),
@@ -3686,13 +3686,13 @@ mod tests {
     }
 
     fn rewrite_status_token(
-        status: Option<super::radix_tree::RewriteStatus>,
+        status: Option<super::datatree::RewriteStatus>,
     ) -> Option<&'static str> {
         match status {
-            Some(super::radix_tree::RewriteStatus::Overrun) => Some("overrun"),
-            Some(super::radix_tree::RewriteStatus::Valid) => Some("valid"),
-            Some(super::radix_tree::RewriteStatus::Invalid) => Some("invalid"),
-            Some(super::radix_tree::RewriteStatus::Interesting) => Some("interesting"),
+            Some(super::datatree::RewriteStatus::Overrun) => Some("overrun"),
+            Some(super::datatree::RewriteStatus::Valid) => Some("valid"),
+            Some(super::datatree::RewriteStatus::Invalid) => Some("invalid"),
+            Some(super::datatree::RewriteStatus::Interesting) => Some("interesting"),
             None => None,
         }
     }
@@ -3762,13 +3762,13 @@ mod tests {
             .collect::<Vec<_>>();
 
         let simple_bool_int_tree = {
-            let mut tree = super::radix_tree::DataTree::default();
+            let mut tree = super::datatree::DataTree::default();
             let int_constraints = ChoiceConstraints::Integer {
                 min_value: Some(0),
                 max_value: Some(2),
                 shrink_towards: 0,
             };
-            super::radix_tree::record_case(
+            super::datatree::record_case(
                 &mut tree,
                 &make_probe_typed_nodes(
                     ChoiceValue::Boolean(false),
@@ -3777,7 +3777,7 @@ mod tests {
                 ),
                 &super::CaseStatus::Valid,
             );
-            super::radix_tree::record_case(
+            super::datatree::record_case(
                 &mut tree,
                 &make_probe_typed_nodes(
                     ChoiceValue::Boolean(false),
@@ -3786,7 +3786,7 @@ mod tests {
                 ),
                 &super::CaseStatus::Invalid,
             );
-            super::radix_tree::record_case(
+            super::datatree::record_case(
                 &mut tree,
                 &make_probe_typed_nodes(
                     ChoiceValue::Boolean(true),
@@ -3796,18 +3796,18 @@ mod tests {
                 &super::CaseStatus::Valid,
             );
             let mut engine = probe_engine_with_seed(seed);
-            let generated = super::radix_tree::generate_novel_prefix(&mut engine, &tree)
+            let generated = super::datatree::generate_novel_prefix(&mut engine, &tree)
                 .unwrap_or_default()
                 .iter()
                 .map(probe_value_token)
                 .collect::<Vec<_>>();
-            let predictable = super::radix_tree::simulate_followup_prefix(
+            let predictable = super::datatree::simulate_followup_prefix(
                 &mut engine,
                 &tree,
                 &[ChoiceValue::Boolean(false), ChoiceValue::Integer(0)],
                 2,
             );
-            let novel = super::radix_tree::simulate_followup_prefix(
+            let novel = super::datatree::simulate_followup_prefix(
                 &mut engine,
                 &tree,
                 &[ChoiceValue::Boolean(false), ChoiceValue::Integer(2)],
@@ -3838,7 +3838,7 @@ mod tests {
             let followup_case_results = followup_cases
                 .iter()
                 .map(|prefix| {
-                    let sim = super::radix_tree::simulate_followup_prefix(
+                    let sim = super::datatree::simulate_followup_prefix(
                         &mut engine,
                         &tree,
                         prefix,
@@ -3853,7 +3853,7 @@ mod tests {
             let rewrite_case_results = followup_cases
                 .iter()
                 .map(|prefix| {
-                    let (rewritten, status) = super::radix_tree::rewrite_prefix(&tree, prefix);
+                    let (rewritten, status) = super::datatree::rewrite_prefix(&tree, prefix);
                     json!({
                         "input": probe_prefix_tokens(prefix),
                         "rewritten": probe_prefix_tokens(&rewritten),
@@ -3873,7 +3873,7 @@ mod tests {
                 .iter()
                 .map(|(prefix, max_choices)| {
                     let mut case_engine = probe_engine_with_seed(seed);
-                    let sim = super::radix_tree::simulate_followup_prefix(
+                    let sim = super::datatree::simulate_followup_prefix(
                         &mut case_engine,
                         &tree,
                         prefix,
@@ -3896,7 +3896,7 @@ mod tests {
             })
         };
         let forced_bool_int_tree = {
-            let mut tree = super::radix_tree::DataTree::default();
+            let mut tree = super::datatree::DataTree::default();
             let int_constraints = ChoiceConstraints::Integer {
                 min_value: Some(0),
                 max_value: Some(2),
@@ -3908,17 +3908,17 @@ mod tests {
                 int_constraints.clone(),
             );
             nodes_valid[0].was_forced = true;
-            super::radix_tree::record_case(&mut tree, &nodes_valid, &super::CaseStatus::Valid);
+            super::datatree::record_case(&mut tree, &nodes_valid, &super::CaseStatus::Valid);
             let mut nodes_invalid = make_probe_typed_nodes(
                 ChoiceValue::Boolean(false),
                 ChoiceValue::Integer(1),
                 int_constraints,
             );
             nodes_invalid[0].was_forced = true;
-            super::radix_tree::record_case(&mut tree, &nodes_invalid, &super::CaseStatus::Invalid);
+            super::datatree::record_case(&mut tree, &nodes_invalid, &super::CaseStatus::Invalid);
 
             let mut engine = probe_engine_with_seed(seed);
-            let generated = super::radix_tree::generate_novel_prefix(&mut engine, &tree)
+            let generated = super::datatree::generate_novel_prefix(&mut engine, &tree)
                 .unwrap_or_default()
                 .iter()
                 .map(probe_value_token)
@@ -3935,7 +3935,7 @@ mod tests {
             let rewrite_case_results = rewrite_cases
                 .iter()
                 .map(|prefix| {
-                    let (rewritten, status) = super::radix_tree::rewrite_prefix(&tree, prefix);
+                    let (rewritten, status) = super::datatree::rewrite_prefix(&tree, prefix);
                     json!({
                         "input": probe_prefix_tokens(prefix),
                         "rewritten": probe_prefix_tokens(&rewritten),
@@ -3972,9 +3972,9 @@ mod tests {
                 ("", "baaaaabb"),
             ];
 
-            let mut tree_case11 = super::radix_tree::DataTree::default();
+            let mut tree_case11 = super::datatree::DataTree::default();
             for (left, right) in replay_cases {
-                super::radix_tree::record_case(
+                super::datatree::record_case(
                     &mut tree_case11,
                     &make_probe_string_pair_nodes(left, right, string_constraints.clone()),
                     &super::CaseStatus::Valid,
@@ -3985,7 +3985,7 @@ mod tests {
                 let _ = super::run_getrandbits_u128(&mut engine_case11, 32);
             }
             let generated_case11 =
-                super::radix_tree::generate_novel_prefix(&mut engine_case11, &tree_case11)
+                super::datatree::generate_novel_prefix(&mut engine_case11, &tree_case11)
                     .unwrap_or_default()
                     .iter()
                     .map(probe_value_token)
@@ -4003,9 +4003,9 @@ mod tests {
                 ("bbaaa", ""),
                 ("bbaaa", "abbaabaa"),
             ];
-            let mut tree_case10 = super::radix_tree::DataTree::default();
+            let mut tree_case10 = super::datatree::DataTree::default();
             for (left, right) in replay_cases10 {
-                super::radix_tree::record_case(
+                super::datatree::record_case(
                     &mut tree_case10,
                     &make_probe_string_pair_nodes(left, right, string_constraints.clone()),
                     &super::CaseStatus::Valid,
@@ -4022,7 +4022,7 @@ mod tests {
                 .py_random
                 .index;
             let generated_case10 =
-                super::radix_tree::generate_novel_prefix(&mut engine_case10, &tree_case10)
+                super::datatree::generate_novel_prefix(&mut engine_case10, &tree_case10)
                     .unwrap_or_default()
                     .iter()
                     .map(probe_value_token)

@@ -2,7 +2,7 @@ use super::{
     NativeShrinkState, ReplayResult, forced_replacements_for_node,
     replay_if_better_with_forced_choices, typed_values,
 };
-use crate::native_engine::TypedChoiceNode;
+use crate::native_engine::ChoiceNode;
 use crate::native_engine::{ChoiceConstraints, ChoiceValue, SpanState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -269,7 +269,7 @@ fn find_integer_max_true(mut f: impl FnMut(i128) -> bool) -> i128 {
     lo
 }
 
-fn is_numeric_nontrivial(node: &crate::native_engine::TypedChoiceNode) -> bool {
+fn is_numeric_nontrivial(node: &crate::native_engine::ChoiceNode) -> bool {
     match (&node.value, &node.constraints) {
         (
             ChoiceValue::Integer(value),
@@ -293,7 +293,7 @@ fn is_numeric_nontrivial(node: &crate::native_engine::TypedChoiceNode) -> bool {
 
 const MAX_PRECISE_INTEGER: f64 = 9_007_199_254_740_992.0;
 
-fn is_redistribute_numeric_candidate(node: &TypedChoiceNode) -> bool {
+fn is_redistribute_numeric_candidate(node: &ChoiceNode) -> bool {
     match (&node.value, &node.constraints) {
         (ChoiceValue::Integer(_), ChoiceConstraints::Integer { .. }) => true,
         (ChoiceValue::Float(value), ChoiceConstraints::Float { .. }) => {
@@ -471,7 +471,7 @@ impl RedistributeNumericPairsPass {
     }
 }
 
-fn is_integer_nontrivial(node: &TypedChoiceNode) -> bool {
+fn is_integer_nontrivial(node: &ChoiceNode) -> bool {
     match (&node.value, &node.constraints) {
         (
             ChoiceValue::Integer(value),
@@ -704,7 +704,7 @@ impl LowerIntegersTogetherPass {
     }
 }
 
-fn trivial_replacement_for_node(node: &TypedChoiceNode) -> ChoiceValue {
+fn trivial_replacement_for_node(node: &ChoiceNode) -> ChoiceValue {
     if node.was_forced {
         return node.value.clone();
     }
@@ -887,7 +887,7 @@ impl NodeProgramPass {
         start: usize,
         program_len: usize,
         repeats: usize,
-        original_nodes: &[TypedChoiceNode],
+        original_nodes: &[ChoiceNode],
     ) -> bool
     where
         F: FnMut(&[u8], Option<Vec<ChoiceValue>>) -> ReplayResult,
@@ -1074,7 +1074,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::native_engine::{CaseStatus, ChoiceKind, SpanId, SpanState, TypedChoiceNode};
+    use crate::native_engine::{CaseStatus, ChoiceKind, ChoiceNode, SpanId, SpanState};
     use serde::Deserialize;
     use std::sync::Arc;
 
@@ -1084,8 +1084,8 @@ mod tests {
         min: i128,
         max: i128,
         shrink_towards: i128,
-    ) -> TypedChoiceNode {
-        TypedChoiceNode {
+    ) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::Integer,
             value: ChoiceValue::Integer(value),
             constraints: ChoiceConstraints::Integer {
@@ -1106,8 +1106,8 @@ mod tests {
         max: i128,
         shrink_towards: i128,
         was_forced: bool,
-    ) -> TypedChoiceNode {
-        TypedChoiceNode {
+    ) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::Integer,
             value: ChoiceValue::Integer(value),
             constraints: ChoiceConstraints::Integer {
@@ -1129,8 +1129,8 @@ mod tests {
         allow_nan: bool,
         smallest_nonzero_magnitude: f64,
         was_forced: bool,
-    ) -> TypedChoiceNode {
-        TypedChoiceNode {
+    ) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::Float,
             value: ChoiceValue::Float(value),
             constraints: ChoiceConstraints::Float {
@@ -1145,8 +1145,8 @@ mod tests {
         }
     }
 
-    fn bool_node(index: usize, value: bool) -> TypedChoiceNode {
-        TypedChoiceNode {
+    fn bool_node(index: usize, value: bool) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::Boolean,
             value: ChoiceValue::Boolean(value),
             constraints: ChoiceConstraints::Boolean { p: 0.5 },
@@ -1156,8 +1156,8 @@ mod tests {
         }
     }
 
-    fn bool_node_forced(index: usize, value: bool, p: f64, was_forced: bool) -> TypedChoiceNode {
-        TypedChoiceNode {
+    fn bool_node_forced(index: usize, value: bool, p: f64, was_forced: bool) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::Boolean,
             value: ChoiceValue::Boolean(value),
             constraints: ChoiceConstraints::Boolean { p },
@@ -1167,8 +1167,8 @@ mod tests {
         }
     }
 
-    fn string_node(index: usize, value: &str, min_size: usize, max_size: usize) -> TypedChoiceNode {
-        TypedChoiceNode {
+    fn string_node(index: usize, value: &str, min_size: usize, max_size: usize) -> ChoiceNode {
+        ChoiceNode {
             kind: ChoiceKind::String,
             value: ChoiceValue::String(value.to_string()),
             constraints: ChoiceConstraints::String {
@@ -1182,7 +1182,7 @@ mod tests {
         }
     }
 
-    fn mk_state(best_typed_nodes: Vec<TypedChoiceNode>) -> NativeShrinkState {
+    fn mk_state(best_typed_nodes: Vec<ChoiceNode>) -> NativeShrinkState {
         NativeShrinkState {
             best: vec![42, 99],
             best_typed_nodes,
@@ -1365,7 +1365,7 @@ mod tests {
         )
     }
 
-    fn nodes_from_fixture(nodes: &[NodeSequenceNodeFixture]) -> Vec<TypedChoiceNode> {
+    fn nodes_from_fixture(nodes: &[NodeSequenceNodeFixture]) -> Vec<ChoiceNode> {
         nodes
             .iter()
             .enumerate()
@@ -1465,13 +1465,13 @@ mod tests {
     }
 
     fn typed_nodes_with_forced_values(
-        template: &[TypedChoiceNode],
+        template: &[ChoiceNode],
         forced: &[ChoiceValue],
-    ) -> Vec<TypedChoiceNode> {
+    ) -> Vec<ChoiceNode> {
         template
             .iter()
             .zip(forced.iter())
-            .map(|(node, value)| TypedChoiceNode {
+            .map(|(node, value)| ChoiceNode {
                 kind: node.kind,
                 value: value.clone(),
                 constraints: node.constraints.clone(),
@@ -1483,7 +1483,7 @@ mod tests {
     }
 
     fn replay_with_oracle(
-        template: Vec<TypedChoiceNode>,
+        template: Vec<ChoiceNode>,
         oracle: impl Fn(&[ChoiceValue]) -> bool + Send + Sync + 'static,
         seen: Arc<std::sync::Mutex<Vec<Vec<ChoiceValue>>>>,
     ) -> impl FnMut(&[u8], Option<Vec<ChoiceValue>>) -> ReplayResult {

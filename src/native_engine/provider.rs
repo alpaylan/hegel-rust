@@ -14,7 +14,8 @@ use crate::native_engine::{
     utils::{Many, Sampler},
 };
 
-trait Provider {
+pub trait Provider {
+    fn draw(&mut self, constraint: ChoiceConstraints) -> ChoiceValue;
     fn draw_boolean(&mut self, p: f64) -> bool;
     fn draw_integer(
         &mut self,
@@ -51,6 +52,41 @@ impl HypothesisProvider {
 static INT_SIZES: &[usize] = &[8, 16, 32, 64, 128];
 
 impl Provider for HypothesisProvider {
+    fn draw(&mut self, constraint: ChoiceConstraints) -> ChoiceValue {
+        match constraint {
+            ChoiceConstraints::Boolean { p } => ChoiceValue::Boolean(self.draw_boolean(p)),
+            ChoiceConstraints::Integer {
+                min_value,
+                max_value,
+                weights,
+                shrink_towards,
+            } => ChoiceValue::Integer(self.draw_integer(
+                min_value,
+                max_value,
+                weights,
+                shrink_towards,
+            )),
+            ChoiceConstraints::Float {
+                min_value,
+                max_value,
+                allow_nan,
+                smallest_nonzero_magnitude,
+            } => ChoiceValue::Float(self.draw_float(
+                min_value,
+                max_value,
+                allow_nan,
+                smallest_nonzero_magnitude,
+            )),
+            ChoiceConstraints::Bytes { min_size, max_size } => {
+                ChoiceValue::Bytes(self.draw_bytes(min_size, max_size))
+            }
+            ChoiceConstraints::String {
+                intervals,
+                min_size,
+                max_size,
+            } => ChoiceValue::String(self.draw_string(intervals, min_size, max_size)),
+        }
+    }
     fn draw_boolean(&mut self, p: f64) -> bool {
         if p <= 0.0 {
             false
