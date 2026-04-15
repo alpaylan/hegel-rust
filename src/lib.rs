@@ -190,6 +190,7 @@ pub(crate) mod antithesis;
 pub(crate) mod cbor_utils;
 pub(crate) mod control;
 pub mod generators;
+#[cfg(feature = "native-engine")]
 pub mod native_engine;
 pub(crate) mod protocol;
 pub(crate) mod runner;
